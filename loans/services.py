@@ -9,6 +9,7 @@ import secrets
 from dateutil.relativedelta import relativedelta
 from django.db import transaction
 from django.utils import timezone
+from django.utils import timezone
 
 from .models import AuditLog, LotteryStatus, Notification, PaymentStatus, ReservationStatus
 
@@ -156,3 +157,35 @@ def run_lottery_draw(draw, actor):
     )
 
     return winner
+
+
+
+def notify_upcoming_and_overdue_payments():
+    """برای اقساط نزدیک و معوق، اعلان یکتا ایجاد می‌کند."""
+    from .models import Payment, PaymentStatus, ReservationStatus
+    today = timezone.localdate()
+    upcoming_until = today + relativedelta(days=3)
+    payments = Payment.objects.filter(
+        reservation__status=ReservationStatus.CONFIRMED,
+        status__in=[PaymentStatus.PENDING, PaymentStatus.RECEIPT_REJECTED],
+        due_date__isnull=False,
+        due_date__lte=upcoming_until,
+    ).select_related("reservation__user", "reservation__loan_plan")
+    created = 0
+    for payment in payments:
+        if payment.due_date < today:
+            kind = "payment_overdue"
+            title = "قسط معوق"
+            message = f"قسط دورهٔ {payment.round_number} وام «{payment.reservation.loan_plan.title}» از موعد پرداخت گذشته است."
+        else:
+            kind = "payment_upcoming"
+            title = "یادآوری سررسید قسط"
+            message = f"قسط دورهٔ {payment.round_number} وام «{payment.reservation.loan_plan.title}» تا {payment.jalali_due_date} سررسید می‌شود."
+        _, was_created = Notification.objects.get_or_create(
+            user=payment.reservation.user,
+            payment=payment,
+            kind=kind,
+            defaults={"title": title, "message": message},
+        )
+        created += int(was_created)
+    return created
