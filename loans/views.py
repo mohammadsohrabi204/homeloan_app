@@ -245,7 +245,7 @@ def manager_payment_action(request, payment_id):
         payment.confirmed_by = request.user
         payment.receipt_rejection_reason = ""
         payment.save(update_fields=["status", "paid_at", "confirmed_by", "receipt_rejection_reason"])
-        Notification.objects.create(user=payment.reservation.user, title="تأیید پرداخت", message=f"پرداخت قسط دورهٔ {payment.round_number} وام «{payment.reservation.loan_plan.title}» تأیید شد.")
+        Notification.objects.get_or_create(user=payment.reservation.user, payment=payment, kind="payment_approved", defaults={"title":"تأیید پرداخت","message":f"پرداخت قسط دورهٔ {payment.round_number} وام «{payment.reservation.loan_plan.title}» تأیید شد."})
         log_action(request.user, "manual_payment_approved", {"payment_id": payment.id}, request.META.get("REMOTE_ADDR"))
         messages.success(request, "پرداخت با موفقیت تأیید شد.")
     elif action == "reject":
@@ -256,7 +256,7 @@ def manager_payment_action(request, payment_id):
         payment.status = PaymentStatus.RECEIPT_REJECTED
         payment.receipt_rejection_reason = reason[:500]
         payment.save(update_fields=["status", "receipt_rejection_reason"])
-        Notification.objects.create(user=payment.reservation.user, title="رد رسید پرداخت", message=f"رسید قسط دورهٔ {payment.round_number} وام «{payment.reservation.loan_plan.title}» رد شد. دلیل: {reason[:500]}")
+        Notification.objects.get_or_create(user=payment.reservation.user, payment=payment, kind="payment_rejected", defaults={"title":"رد رسید پرداخت","message":f"رسید قسط دورهٔ {payment.round_number} وام «{payment.reservation.loan_plan.title}» رد شد. دلیل: {reason[:500]}"})
         log_action(
             request.user,
             "manual_receipt_rejected",
