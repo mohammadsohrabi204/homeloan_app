@@ -51,6 +51,10 @@ class Notification(models.Model):
         verbose_name = "اعلان"
         verbose_name_plural = "اعلان‌ها"
 
+    @property
+    def jalali_created_at(self):
+        return format_jalali(self.created_at)
+
     def __str__(self):
         return f"{self.user} — {self.title}"
 
