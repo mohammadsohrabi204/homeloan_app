@@ -54,11 +54,11 @@ class LoanPlanAdmin(admin.ModelAdmin):
     list_display = ("title", "total_amount_display", "monthly_payment_display", "service_fee_display", "duration_months", "capacity_display", "status", "created_at")
     list_filter = ("status",)
     search_fields = ("title",)
-    readonly_fields = ("created_by", "created_at")
+    readonly_fields = ("created_by", "created_at", "jalali_start_date")
     inlines = [ReservationInline]
     actions = ["action_start_plan"]
     fields = (
-        "title", "description", "total_amount", "monthly_payment", "service_fee",
+        "title", "description", "total_amount", "monthly_payment", "service_fee", "jalali_start_date",
         "duration_months", "capacity", "payment_destination", "status", "start_date", "created_by", "created_at",
     )
 
@@ -80,6 +80,10 @@ class LoanPlanAdmin(admin.ModelAdmin):
                 "duration_months", "capacity", "status", "start_date",
             )
         return self.readonly_fields
+
+    @admin.display(description="تاریخ شروع شمسی")
+    def jalali_start_date(self, obj):
+        return format_jalali(obj.start_date)
 
     @admin.display(description="مبلغ وام")
     def total_amount_display(self, obj):
