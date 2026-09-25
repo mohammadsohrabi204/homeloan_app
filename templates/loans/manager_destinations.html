@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% block title %}حساب‌های دریافت{% endblock %}
+{% block content %}
+<div class="plan-header"><h1>حساب‌های دریافت اقساط</h1><p class="muted">حساب‌هایی که مدیر برای دریافت واریزهای صندوق تعریف می‌کند.</p></div>
+<div class="manager-actions"><a class="btn" href="{% url 'loans:manager_destination_create' %}">افزودن حساب</a><a class="btn btn-secondary" href="{% url 'loans:manager_dashboard' %}">پنل مدیریت</a></div>
+<div class="manager-table-wrap">
+<table class="manager-table"><thead><tr><th>عنوان</th><th>صاحب حساب</th><th>کارت</th><th>شبا</th><th>وضعیت</th></tr></thead>
+<tbody>{% for d in destinations %}<tr><td>{{ d.title }}</td><td>{{ d.account_holder }}</td><td>{{ d.card_number|default:"—" }}</td><td>{{ d.iban|default:"—" }}</td><td>{% if d.is_active %}<span class="badge badge-teal">فعال</span>{% else %}<span class="badge badge-ink">غیرفعال</span>{% endif %}</td></tr>{% empty %}<tr><td colspan="5">حسابی ثبت نشده است.</td></tr>{% endfor %}</tbody></table>
+</div>
+{% endblock %}
