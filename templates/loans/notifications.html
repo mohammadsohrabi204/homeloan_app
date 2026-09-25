@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}اعلان‌ها{% endblock %}
+{% block content %}
+<div class="plan-header">
+  <h1>اعلان‌ها</h1>
+  <p class="muted">آخرین وضعیت پرداخت‌ها و رسیدهای شما</p>
+</div>
+<section class="block">
+  {% for item in notifications %}
+    <article class="notification-item">
+      <strong>{{ item.title }}</strong>
+      <p>{{ item.message }}</p>
+      <span class="muted small">{{ item.created_at|date:"Y/m/d H:i" }}</span>
+    </article>
+  {% empty %}
+    <div class="empty-state">اعلانی برای نمایش وجود ندارد.</div>
+  {% endfor %}
+</section>
+{% endblock %}
