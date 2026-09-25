@@ -130,6 +130,47 @@ def manager_dashboard(request):
     )
 
 
+
+@staff_required
+@require_POST
+def manager_payment_action(request, payment_id):
+    payment = get_object_or_404(
+        Payment.objects.select_related("reservation__loan_plan", "reservation__user"),
+        pk=payment_id,
+    )
+    action = request.POST.get("action")
+    if payment.status == PaymentStatus.PAID:
+        messages.info(request, "این قسط قبلاً تأیید شده است.")
+        return redirect("loans:manager_dashboard")
+
+    if action == "approve":
+        payment.status = PaymentStatus.PAID
+        payment.paid_at = timezone.now()
+        payment.confirmed_by = request.user
+        payment.receipt_rejection_reason = ""
+        payment.save(update_fields=["status", "paid_at", "confirmed_by", "receipt_rejection_reason"])
+        log_action(request.user, "manual_payment_approved", {"payment_id": payment.id}, request.META.get("REMOTE_ADDR"))
+        messages.success(request, "پرداخت با موفقیت تأیید شد.")
+    elif action == "reject":
+        reason = request.POST.get("reason", "").strip()
+        if not reason:
+            messages.error(request, "برای رد رسید باید دلیل وارد شود.")
+            return redirect("loans:manager_dashboard")
+        payment.status = PaymentStatus.RECEIPT_REJECTED
+        payment.receipt_rejection_reason = reason[:500]
+        payment.save(update_fields=["status", "receipt_rejection_reason"])
+        log_action(
+            request.user,
+            "manual_receipt_rejected",
+            {"payment_id": payment.id, "reason": reason[:500]},
+            request.META.get("REMOTE_ADDR"),
+        )
+        messages.success(request, "رسید رد شد و دلیل آن ثبت گردید.")
+    else:
+        messages.error(request, "عملیات نامعتبر است.")
+    return redirect("loans:manager_dashboard")
+
+
 @login_required
 def plan_detail(request, plan_id):
     plan = get_object_or_404(LoanPlan, pk=plan_id)
