@@ -41,9 +41,13 @@ class Notification(models.Model):
     message = models.TextField("پیام")
     is_read = models.BooleanField("خوانده شده", default=False)
     created_at = models.DateTimeField(auto_now_add=True)
+    payment = models.ForeignKey("Payment", on_delete=models.CASCADE, null=True, blank=True, related_name="notifications")
+    lottery_draw = models.ForeignKey("LotteryDraw", on_delete=models.CASCADE, null=True, blank=True, related_name="notifications")
+    kind = models.CharField(max_length=40, default="general")
 
     class Meta:
         ordering = ["-created_at"]
+        constraints = [models.UniqueConstraint(fields=["user", "payment", "kind"], name="uq_user_payment_notification_kind"), models.UniqueConstraint(fields=["user", "lottery_draw", "kind"], name="uq_user_draw_notification_kind")]
         verbose_name = "اعلان"
         verbose_name_plural = "اعلان‌ها"
 
