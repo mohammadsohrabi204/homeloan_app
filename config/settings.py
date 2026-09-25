@@ -23,7 +23,6 @@ def env_bool(key, default=False):
 # --- Celery / Redis ---------------------------------------------------
 CELERY_BROKER_URL = os.environ.get("CELERY_BROKER_URL", "redis://redis:6379/0")
 CELERY_RESULT_BACKEND = os.environ.get("CELERY_RESULT_BACKEND", CELERY_BROKER_URL)
-CELERY_TIMEZONE = TIME_ZONE
 
 # --- امنیت پایه --------------------------------------------------------
 SECRET_KEY = os.environ.get("SECRET_KEY")
