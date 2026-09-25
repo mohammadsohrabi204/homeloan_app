@@ -170,6 +170,14 @@ def manager_payment_action(request, payment_id):
     return redirect("loans:manager_dashboard")
 
 
+
+@login_required
+def notifications(request):
+    items = request.user.notifications.all()[:50]
+    request.user.notifications.filter(is_read=False).update(is_read=True)
+    return render(request, "loans/notifications.html", {"notifications": items})
+
+
 @login_required
 def plan_detail(request, plan_id):
     plan = get_object_or_404(LoanPlan, pk=plan_id)
