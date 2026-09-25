@@ -1,0 +1,290 @@
+/* =========================================================================
+   صندوق وام خانگی — هویت بصری «دفترچهٔ حساب/پس‌انداز»
+   جوهر تیرهٔ سرمه‌ای + طلایی مسی + کاغذ گرم، به‌جای قالب کارت‌های گرد و سایه‌دار
+   عمومیِ SaaS. راست‌به‌چپ، یک خانوادهٔ تایپ فارسی با وزن‌های متفاوت.
+   ========================================================================= */
+
+@import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700;800&display=swap');
+
+:root {
+  --ink-900: #16232c;
+  --ink-700: #3a4c58;
+  --ink-500: #6b7c86;
+
+  --paper-0: #faf9f5;
+  --paper-50: #f3f0e7;
+  --paper-100: #e8e3d3;
+  --hairline: #d8d2bd;
+
+  --brass-500: #b8863a;
+  --brass-700: #8c6526;
+  --brass-100: #f1e3c6;
+
+  --teal-600: #2f6f62;
+  --teal-100: #dcebe7;
+
+  --rust-600: #a63d2f;
+  --rust-100: #f3ddd8;
+
+  --radius-s: 4px;
+  --radius-m: 8px;
+
+  --font: 'Vazirmatn', Tahoma, sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+html { font-size: 16px; }
+
+body {
+  margin: 0;
+  font-family: var(--font);
+  background: var(--paper-0);
+  color: var(--ink-900);
+  line-height: 1.7;
+  font-variant-numeric: tabular-nums;
+}
+
+a { color: var(--brass-700); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+.container {
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+/* ---------- هدر ---------- */
+.site-header {
+  background: var(--ink-900);
+  color: var(--paper-0);
+  border-bottom: 3px solid var(--brass-500);
+}
+.header-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 16px 20px;
+}
+.brand {
+  font-weight: 800;
+  font-size: 1.25rem;
+  color: var(--paper-0);
+  letter-spacing: 0;
+}
+.brand:hover { text-decoration: none; opacity: .9; }
+.site-header nav { display: flex; gap: 18px; flex-wrap: wrap; align-items: center; }
+.site-header nav a { color: var(--paper-50); font-weight: 500; font-size: .95rem; }
+.site-header nav a:hover { color: var(--brass-100); text-decoration: none; }
+.logout-form { margin: 0; }
+.nav-link { background: none; border: 0; color: var(--paper-50); cursor: pointer; font: inherit; font-weight: 500; font-size: .95rem; padding: 0; }
+.nav-link:hover { color: var(--brass-100); }
+
+/* ---------- محتوای اصلی ---------- */
+main.container { padding-top: 32px; padding-bottom: 64px; min-height: 60vh; }
+
+h1, h2, h3 { font-weight: 700; color: var(--ink-900); line-height: 1.4; margin: 0 0 .6em; }
+h1 { font-size: 1.7rem; font-weight: 800; }
+h2 { font-size: 1.25rem; }
+h3 { font-size: 1.05rem; }
+
+.muted { color: var(--ink-500); }
+.small { font-size: .875rem; }
+
+/* ---------- پیام‌های سیستم ---------- */
+.messages { margin-bottom: 24px; display: flex; flex-direction: column; gap: 8px; }
+.alert {
+  padding: 12px 16px;
+  border-radius: var(--radius-s);
+  border-inline-start: 4px solid var(--ink-500);
+  background: var(--paper-50);
+  font-size: .95rem;
+}
+.alert-success { border-color: var(--teal-600); background: var(--teal-100); color: #204a41; }
+.alert-error, .alert-danger { border-color: var(--rust-600); background: var(--rust-100); color: #6e281d; }
+.alert-warning { border-color: var(--brass-500); background: var(--brass-100); color: #6b4a15; }
+.alert-info { border-color: var(--ink-500); background: var(--paper-100); color: var(--ink-700); }
+
+/* ---------- دکمه‌ها ---------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 20px;
+  border-radius: var(--radius-s);
+  border: 1px solid transparent;
+  font-family: inherit;
+  font-size: .95rem;
+  font-weight: 600;
+  cursor: pointer;
+  background: var(--brass-500);
+  color: #fff;
+  transition: background-color .15s ease;
+}
+.btn:hover { background: var(--brass-700); text-decoration: none; }
+.btn:focus-visible { outline: 3px solid var(--ink-900); outline-offset: 2px; }
+.btn-secondary { background: transparent; color: var(--ink-900); border-color: var(--ink-500); }
+.btn-secondary:hover { background: var(--paper-100); }
+.btn-block { width: 100%; }
+.btn[disabled] { opacity: .5; cursor: not-allowed; }
+
+/* ---------- فرم‌ها ---------- */
+.auth-panel {
+  max-width: 420px;
+  margin: 24px auto;
+  background: var(--paper-0);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-m);
+  padding: 32px;
+}
+.field { margin-bottom: 18px; }
+.field label { display: block; font-weight: 600; font-size: .9rem; margin-bottom: 6px; }
+.field input[type="text"],
+.field input[type="password"],
+.field input[type="datetime-local"],
+.field input[type="file"],
+.field textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-s);
+  font-family: inherit;
+  font-size: 1rem;
+  background: #fff;
+  color: var(--ink-900);
+}
+.field input:focus-visible, .field textarea:focus-visible {
+  outline: 2px solid var(--brass-500);
+  outline-offset: 1px;
+}
+.field .errorlist { list-style: none; padding: 0; margin: 6px 0 0; color: var(--rust-600); font-size: .85rem; }
+.field .help-text { font-size: .82rem; color: var(--ink-500); margin-top: 4px; }
+.form-footer-link { text-align: center; margin-top: 16px; font-size: .9rem; }
+.receipt-form { display: grid; gap: 8px; min-width: 220px; }
+.receipt-form label { display: grid; gap: 3px; font-size: .8rem; color: var(--ink-700); }
+.receipt-form input { max-width: 220px; font: inherit; }
+.receipt-rejected { color: var(--rust-600); max-width: 260px; margin: 0; }
+.resend-form { margin-top: 12px; }
+.payment-destination { margin: 14px 0; padding: 12px; border: 1px solid var(--hairline); background: var(--paper-50); font-size: .9rem; }
+
+/* ---------- ردیف‌های دفتری (به‌جای کارت‌های گرد و سایه‌دار عمومی) ---------- */
+.ledger {
+  border-top: 1px solid var(--hairline);
+}
+.ledger-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 18px 4px;
+  border-bottom: 1px solid var(--hairline);
+  border-inline-start: 3px solid transparent;
+}
+.ledger-row.status-open { border-inline-start-color: var(--teal-600); }
+.ledger-row.status-full { border-inline-start-color: var(--brass-500); }
+.ledger-row.status-closed { border-inline-start-color: var(--ink-500); }
+
+.ledger-row-main { flex: 1; min-width: 0; }
+.ledger-row-title { font-weight: 700; font-size: 1.05rem; margin-bottom: 4px; }
+.ledger-row-meta { color: var(--ink-500); font-size: .875rem; }
+.ledger-row-amount { text-align: left; white-space: nowrap; }
+.ledger-row-amount .amount { font-weight: 700; font-size: 1.1rem; }
+.ledger-row-amount .amount-label { display: block; font-size: .75rem; color: var(--ink-500); }
+
+.empty-state {
+  padding: 40px 20px;
+  text-align: center;
+  color: var(--ink-500);
+  border-top: 1px solid var(--hairline);
+  border-bottom: 1px solid var(--hairline);
+}
+
+/* ---------- برچسب وضعیت ---------- */
+.badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: .78rem;
+  font-weight: 600;
+}
+.badge-teal { background: var(--teal-100); color: #204a41; }
+.badge-brass { background: var(--brass-100); color: #6b4a15; }
+.badge-rust { background: var(--rust-100); color: #6e281d; }
+.badge-ink { background: var(--paper-100); color: var(--ink-700); }
+
+/* ---------- ردیاب دوره‌ها (رشتهٔ ماه‌های وام — یک توالی واقعی) ---------- */
+.round-tracker {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin: 16px 0 24px;
+  padding: 0;
+  list-style: none;
+}
+.round-tracker li {
+  flex: 1 1 42px;
+  min-width: 42px;
+  text-align: center;
+  padding: 8px 4px 6px;
+  border-radius: var(--radius-s);
+  background: var(--paper-100);
+  color: var(--ink-500);
+  font-size: .8rem;
+  font-weight: 600;
+  border: 1px solid transparent;
+}
+.round-tracker li .round-no { display: block; font-size: .95rem; margin-bottom: 2px; }
+.round-tracker li.paid { background: var(--teal-100); color: #204a41; }
+.round-tracker li.won { background: var(--brass-500); color: #fff; }
+.round-tracker li.pending-mine { border-color: var(--brass-500); }
+
+/* ---------- جدول اعضا ---------- */
+.members-table { width: 100%; border-collapse: collapse; margin: 12px 0 28px; font-size: .92rem; }
+.members-table th, .members-table td { padding: 10px 8px; border-bottom: 1px solid var(--hairline); text-align: start; }
+.members-table th { color: var(--ink-500); font-weight: 600; font-size: .82rem; }
+.members-table tr.is-me { background: var(--paper-50); }
+
+/* ---------- جعبهٔ قرعه‌کشی/شمارش معکوس ---------- */
+.draw-box {
+  border: 1px dashed var(--brass-500);
+  border-radius: var(--radius-m);
+  padding: 18px 20px;
+  margin-bottom: 20px;
+  background: var(--brass-100);
+}
+.draw-box .countdown { font-weight: 800; font-size: 1.3rem; color: var(--ink-900); font-variant-numeric: tabular-nums; }
+.draw-box.completed { background: var(--teal-100); border-style: solid; border-color: var(--teal-600); }
+
+/* ---------- بخش‌های صفحهٔ جزئیات ---------- */
+.plan-header { padding: 20px 0 8px; border-bottom: 1px solid var(--hairline); margin-bottom: 20px; }
+.plan-stats { display: flex; gap: 28px; flex-wrap: wrap; margin: 14px 0 4px; }
+.plan-stat { min-width: 110px; }
+.plan-stat .value { font-size: 1.3rem; font-weight: 800; display: block; }
+.plan-stat .label { font-size: .8rem; color: var(--ink-500); }
+
+section.block { margin-bottom: 36px; }
+
+/* ---------- فوتر ---------- */
+.site-footer {
+  border-top: 1px solid var(--hairline);
+  padding: 20px 0;
+  color: var(--ink-500);
+  font-size: .85rem;
+}
+
+/* ---------- 2FA / QR ---------- */
+.qr-box { text-align: center; margin: 16px 0; }
+.qr-box img { border: 1px solid var(--hairline); border-radius: var(--radius-s); padding: 8px; background: #fff; }
+.secret-code { font-family: monospace; letter-spacing: 2px; background: var(--paper-100); padding: 8px 12px; border-radius: var(--radius-s); display: inline-block; margin-top: 6px; }
+
+@media (max-width: 560px) {
+  .header-inner { flex-direction: column; align-items: flex-start; }
+  .ledger-row { flex-wrap: wrap; }
+  .plan-stats { gap: 16px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; }
+}

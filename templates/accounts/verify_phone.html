@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}تأیید شماره موبایل{% endblock %}
+{% block content %}
+<div class="auth-panel">
+  <h1>تأیید شماره موبایل</h1>
+  <p class="muted">کد شش‌رقمی ارسال‌شده به {{ phone }} را وارد کنید.</p>
+  <form method="post" novalidate>
+    {% csrf_token %}
+    <div class="field">
+      <label for="{{ form.token.id_for_label }}">کد تأیید</label>
+      {{ form.token }}
+      {{ form.token.errors }}
+    </div>
+    <button type="submit" class="btn btn-block">تأیید شماره</button>
+  </form>
+  <form method="post" action="{% url 'accounts:resend_phone_otp' %}" class="resend-form">
+    {% csrf_token %}
+    <button type="submit" class="btn btn-secondary">ارسال دوبارهٔ کد</button>
+  </form>
+</div>
+{% endblock %}

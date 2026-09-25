@@ -1,0 +1,23 @@
+# اسرار — هرگز کامیت نشود
+.env
+
+# دیتابیس محلی
+*.sqlite3
+db.sqlite3
+
+# پایتون
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+
+# فایل‌های استاتیک جمع‌آوری‌شده
+staticfiles/
+media/
+
+# ابزارها
+.vscode/
+.idea/
+.DS_Store
+*.log

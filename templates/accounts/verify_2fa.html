@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}تایید دومرحله‌ای{% endblock %}
+{% block content %}
+<div class="auth-panel">
+  <h1>تأیید دومرحله‌ای</h1>
+  <p class="muted small">کد شش‌رقمی اپ احراز هویت (Google Authenticator یا مشابه) را وارد کنید.</p>
+  <form method="post" novalidate>
+    {% csrf_token %}
+    <div class="field">
+      <label for="{{ form.token.id_for_label }}">کد شش‌رقمی</label>
+      {{ form.token }}
+      {{ form.token.errors }}
+    </div>
+    <button type="submit" class="btn btn-block">تأیید و ورود</button>
+  </form>
+</div>
+{% endblock %}

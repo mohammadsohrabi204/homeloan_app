@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% block title %}داشبورد{% endblock %}
+{% block content %}
+<h1>داشبورد</h1>
+
+<section class="block">
+  <h2>وام‌های من</h2>
+  {% if my_reservations %}
+    <div class="ledger">
+      {% for r in my_reservations %}
+        <a class="ledger-row status-open" href="{% url 'loans:plan_detail' r.loan_plan.id %}" style="color:inherit; text-decoration:none;">
+          <div class="ledger-row-main">
+            <div class="ledger-row-title">{{ r.loan_plan.title }}</div>
+            <div class="ledger-row-meta">
+              {% if r.has_won %}<span class="badge badge-brass">برندهٔ دورهٔ {{ r.won_round }}</span>{% else %}عضو این طرح هستید{% endif %}
+              · {{ r.loan_plan.get_status_display }}
+            </div>
+          </div>
+          <div class="ledger-row-amount">
+            <span class="amount">{{ r.loan_plan.monthly_payment|intcomma }}</span>
+            <span class="amount-label">قسط ماهانه (تومان)</span>
+          </div>
+        </a>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="empty-state">هنوز عضو هیچ وامی نشده‌اید. از فهرست زیر یکی را رزرو کنید.</div>
+  {% endif %}
+</section>
+
+<section class="block">
+  <h2>وام‌های باز برای رزرو</h2>
+  {% if open_plans %}
+    <div class="ledger">
+      {% for plan in open_plans %}
+        <a class="ledger-row {% if plan.status == 'open' %}status-open{% else %}status-full{% endif %}" href="{% url 'loans:plan_detail' plan.id %}" style="color:inherit; text-decoration:none;">
+          <div class="ledger-row-main">
+            <div class="ledger-row-title">{{ plan.title }}</div>
+            <div class="ledger-row-meta">
+              {{ plan.duration_months }} دوره ·
+              {% if plan.status == 'open' %}
+                <span class="badge badge-teal">{{ plan.slots_left }} جای خالی از {{ plan.capacity }}</span>
+              {% else %}
+                <span class="badge badge-brass">ظرفیت تکمیل</span>
+              {% endif %}
+            </div>
+          </div>
+          <div class="ledger-row-amount">
+            <span class="amount">{{ plan.total_amount|intcomma }}</span>
+            <span class="amount-label">مبلغ وام (تومان)</span>
+          </div>
+        </a>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="empty-state">در حال حاضر هیچ وامی برای رزرو باز نیست. بعداً دوباره سر بزنید.</div>
+  {% endif %}
+</section>
+{% endblock %}

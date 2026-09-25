@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}حساب من{% endblock %}
+{% block content %}
+<h1>حساب من</h1>
+
+<section class="block">
+  <h2>اطلاعات حساب</h2>
+  <p><strong>نام:</strong> {{ user.full_name }}</p>
+  <p><strong>شماره موبایل:</strong> {{ user.phone_number }}</p>
+  <p><strong>شماره کارت دریافت وام:</strong> {{ user.card_number|default:"ثبت نشده" }}</p>
+  <p><strong>شماره شبا دریافت وام:</strong> {{ user.iban|default:"ثبت نشده" }}</p>
+  {% if user.is_staff %}<p><span class="badge badge-brass">مدیر صندوق</span></p>{% endif %}
+</section>
+
+<section class="block">
+  <h2>اطلاعات بانکی برای دریافت وام</h2>
+  <p class="muted small">در صورت برنده‌شدن، مدیر از این اطلاعات برای واریز مبلغ وام استفاده می‌کند.</p>
+  <form method="post" class="bank-details-form" novalidate>
+    {% csrf_token %}
+    <div class="field"><label for="{{ bank_form.card_number.id_for_label }}">شماره کارت</label>{{ bank_form.card_number }}{{ bank_form.card_number.errors }}</div>
+    <div class="field"><label for="{{ bank_form.iban.id_for_label }}">شماره شبا</label>{{ bank_form.iban }}{{ bank_form.iban.errors }}</div>
+    <button type="submit" class="btn">ذخیرهٔ اطلاعات بانکی</button>
+  </form>
+</section>
+
+<section class="block">
+  <h2>امنیت حساب</h2>
+  {% if user.is_2fa_enabled %}
+    <p><span class="badge badge-teal">تأیید دومرحله‌ای فعال است</span></p>
+  {% else %}
+    <p class="muted">تأیید دومرحله‌ای فعال نیست. {% if user.is_staff %}به‌شدت توصیه می‌شود چون حساب شما به ساخت وام و اجرای قرعه‌کشی دسترسی دارد.{% endif %}</p>
+    <a href="{% url 'accounts:setup_2fa' %}" class="btn">فعال‌سازی تأیید دومرحله‌ای</a>
+  {% endif %}
+</section>
+{% endblock %}

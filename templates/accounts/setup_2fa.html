@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}فعال‌سازی تایید دومرحله‌ای{% endblock %}
+{% block content %}
+<div class="auth-panel">
+  <h1>فعال‌سازی تأیید دومرحله‌ای</h1>
+  <p class="muted small">با اپ Google Authenticator، Authy یا مشابه، کد QR زیر را اسکن کنید:</p>
+  <div class="qr-box">
+    <img src="data:image/png;base64,{{ qr_base64 }}" alt="کد QR برای فعال‌سازی احراز هویت دومرحله‌ای" width="200" height="200">
+    <div class="secret-code">{{ secret }}</div>
+    <p class="muted small">اگر امکان اسکن نیست، این کد را دستی در اپ وارد کنید.</p>
+  </div>
+  <form method="post" novalidate>
+    {% csrf_token %}
+    <div class="field">
+      <label for="{{ form.token.id_for_label }}">کد شش‌رقمی نمایش‌داده‌شده در اپ</label>
+      {{ form.token }}
+      {{ form.token.errors }}
+    </div>
+    <button type="submit" class="btn btn-block">فعال‌سازی</button>
+  </form>
+</div>
+{% endblock %}

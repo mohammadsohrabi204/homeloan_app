@@ -1,0 +1,40 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: homeloan
+      POSTGRES_USER: homeloan
+      # این رمز را حتماً عوض کنید و در فایل .env نگه دارید
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-this-password}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U homeloan"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    # دیتابیس به بیرون باز نمی‌شود؛ فقط برنامه به آن دسترسی دارد
+    expose:
+      - "5432"
+
+  web:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgres://homeloan:${POSTGRES_PASSWORD:-change-this-password}@db:5432/homeloan
+    ports:
+      - "8000:8000"
+    volumes:
+      - static_files:/app/staticfiles
+      - media_files:/app/media
+
+volumes:
+  postgres_data:
+  static_files:
+  media_files:

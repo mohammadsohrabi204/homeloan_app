@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block title %}خطا {{ code }}{% endblock %}
+{% block content %}
+<div class="empty-state">
+  <h1>{{ code }}</h1>
+  <p>{{ message }}</p>
+  <p><a href="{% url 'loans:dashboard' %}">بازگشت به داشبورد</a></p>
+</div>
+{% endblock %}

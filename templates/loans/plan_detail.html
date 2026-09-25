@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% block title %}{{ plan.title }}{% endblock %}
+{% block content %}
+
+<div class="plan-header">
+  <h1>{{ plan.title }}</h1>
+  {% if plan.description %}<p class="muted">{{ plan.description }}</p>{% endif %}
+  <div class="plan-stats">
+    <div class="plan-stat"><span class="value">{{ plan.total_amount|intcomma }}</span><span class="label">مبلغ وام (تومان)</span></div>
+    <div class="plan-stat"><span class="value">{{ plan.monthly_payment|intcomma }}</span><span class="label">قسط ماهانه (تومان)</span></div>
+    <div class="plan-stat"><span class="value">{{ plan.duration_months }}</span><span class="label">تعداد دوره (ماه)</span></div>
+    <div class="plan-stat"><span class="value">{{ plan.confirmed_count }} / {{ plan.capacity }}</span><span class="label">تعداد اعضا</span></div>
+  </div>
+  {% if plan.service_fee > 0 %}<p class="small muted">هزینهٔ خدمات صندوق: {{ plan.service_fee|intcomma }} تومان (این وام بدون سود/بهره است)</p>{% endif %}
+  {% if plan.payment_destination %}
+    <div class="payment-destination">
+      <strong>حساب دریافت اقساط: {{ plan.payment_destination.account_holder }}</strong><br>
+      {% if plan.payment_destination.card_number %}شماره کارت: {{ plan.payment_destination.card_number }}<br>{% endif %}
+      {% if plan.payment_destination.iban %}شماره شبا: {{ plan.payment_destination.iban }}{% endif %}
+    </div>
+  {% endif %}
+
+  {% if not my_reservation and plan.status == 'open' %}
+    <form method="post" action="{% url 'loans:reserve' plan.id %}">
+      {% csrf_token %}
+      <button type="submit" class="btn">رزرو این وام</button>
+    </form>
+  {% elif not my_reservation %}
+    <p class="badge badge-ink">این وام دیگر برای رزرو باز نیست.</p>
+  {% endif %}
+</div>
+
+{% if my_reservation %}
+<section class="block">
+  <h2>اقساط من</h2>
+  {% if my_reservation.has_won %}
+    <p><span class="badge badge-brass">شما برندهٔ دورهٔ {{ my_reservation.won_round }} این وام شده‌اید</span></p>
+  {% endif %}
+
+  <ol class="round-tracker">
+    {% for p in my_payments %}
+      <li class="{% if p.status == 'paid' %}paid{% endif %} {% if my_reservation.won_round == p.round_number %}won{% endif %}">
+        <span class="round-no">{{ p.round_number }}</span>
+        {% if p.status == 'paid' %}پرداخت‌شده{% elif p.status == 'failed' %}ناموفق{% else %}در انتظار{% endif %}
+      </li>
+    {% endfor %}
+  </ol>
+
+  {% if my_payments %}
+  <table class="members-table">
+    <thead><tr><th>دوره</th><th>سررسید</th><th>مبلغ (تومان)</th><th>وضعیت</th><th></th></tr></thead>
+    <tbody>
+      {% for p in my_payments %}
+      <tr>
+        <td>{{ p.round_number }}</td>
+        <td>{{ p.jalali_due_date }}</td>
+        <td>{{ p.amount|intcomma }}</td>
+        <td>
+          {% if p.status == 'paid' %}<span class="badge badge-teal">پرداخت‌شده</span>
+          {% elif p.status == 'receipt_rejected' %}<span class="badge badge-rust">رسید رد شده</span>
+          {% elif p.status == 'failed' %}<span class="badge badge-rust">ناموفق</span>
+          {% else %}<span class="badge badge-brass">در انتظار</span>{% endif %}
+        </td>
+        <td>
+          {% if p.status != 'paid' and manual_gateway %}
+            {% if p.manual_receipt and p.status != 'receipt_rejected' %}
+              <span class="badge badge-ink">رسید ارسال شده؛ در انتظار بررسی</span>
+            {% else %}
+              {% if p.status == 'receipt_rejected' %}<p class="small receipt-rejected">{{ p.receipt_rejection_reason }}</p>{% endif %}
+              <form method="post" enctype="multipart/form-data" action="{% url 'payments:submit_manual_receipt' p.id %}" class="receipt-form">
+                {% csrf_token %}
+                <label>شماره پیگیری <input name="reference" required minlength="4" maxlength="80"></label>
+                <label>تصویر رسید <input type="file" name="receipt" accept="image/jpeg,image/png,image/webp" required></label>
+                <button type="submit" class="btn btn-secondary">{% if p.status == 'receipt_rejected' %}ارسال مجدد رسید{% else %}ارسال رسید{% endif %}</button>
+              </form>
+            {% endif %}
+          {% endif %}
+          {% if p.status != 'paid' and online_gateway %}
+            <form method="post" action="{% url 'payments:pay' p.id %}">
+              {% csrf_token %}
+              {% if manual_gateway %}<input type="hidden" name="payment_method" value="zarinpal">{% endif %}
+              <button type="submit" class="btn btn-secondary">پرداخت آنلاین با زرین‌پال</button>
+            </form>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+    <p class="muted small">این وام هنوز شروع نشده؛ وقتی مدیر آن را آغاز کند، جدول اقساط شما اینجا نمایش داده می‌شود.</p>
+  {% endif %}
+</section>
+{% endif %}
+
+<section class="block">
+  <h2>قرعه‌کشی‌ها</h2>
+  {% if draws %}
+    {% for d in draws %}
+      <div class="draw-box {% if d.status == 'completed' %}completed{% endif %}">
+        <strong>دورهٔ {{ d.round_number }}</strong> —
+        {% if d.status == 'scheduled' %}
+          زمان اعلام‌شده: {{ d.jalali_scheduled_at }}
+          <div class="countdown" data-target="{{ d.scheduled_at|date:'c' }}">در حال محاسبه…</div>
+        {% elif d.status == 'completed' %}
+          برگزار شد در {{ d.jalali_executed_at }} —
+          برنده: <strong>{{ d.winner_reservation.user.full_name|default:"—" }}</strong>
+        {% else %}
+          لغو شده
+        {% endif %}
+        {% if user.is_staff %}
+          <div class="small"><a href="{% url 'admin:loans_lotterydraw_change' d.id %}">مدیریت در پنل ادمین</a></div>
+        {% endif %}
+      </div>
+    {% endfor %}
+  {% else %}
+    <div class="empty-state">هنوز زمانی برای قرعه‌کشی این وام اعلام نشده است.</div>
+  {% endif %}
+</section>
+
+{% if members_view %}
+<section class="block">
+  <h2>اعضای این طرح ({{ members_view|length }} نفر)</h2>
+  <table class="members-table">
+    <thead><tr><th>نام</th><th>وضعیت</th></tr></thead>
+    <tbody>
+      {% for m in members_view %}
+      <tr class="{% if m.is_me %}is-me{% endif %}">
+        <td>{{ m.name }}{% if m.is_me %} (شما){% endif %}</td>
+        <td>{% if m.has_won %}<span class="badge badge-brass">برندهٔ دورهٔ {{ m.won_round }}</span>{% else %}<span class="badge badge-ink">در انتظار قرعه‌کشی</span>{% endif %}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endif %}
+
+<script>
+(function () {
+  function tick() {
+    document.querySelectorAll('.countdown[data-target]').forEach(function (el) {
+      var target = new Date(el.dataset.target).getTime();
+      var diff = target - Date.now();
+      if (diff <= 0) { el.textContent = 'زمان قرعه‌کشی فرارسیده است'; return; }
+      var d = Math.floor(diff / 86400000);
+      var h = Math.floor((diff % 86400000) / 3600000);
+      var m = Math.floor((diff % 3600000) / 60000);
+      var s = Math.floor((diff % 60000) / 1000);
+      var parts = [];
+      if (d) parts.push(d + ' روز');
+      parts.push(('0' + h).slice(-2) + ':' + ('0' + m).slice(-2) + ':' + ('0' + s).slice(-2));
+      el.textContent = parts.join(' و ');
+    });
+  }
+  tick();
+  setInterval(tick, 1000);
+})();
+</script>
+{% endblock %}
