@@ -1,19 +1,5 @@
 {% extends "base.html" %}
-{% block title %}{{ title }}<script>
-(function(){
-const O=["صفر","یک","دو","سه","چهار","پنج","شش","هفت","هشت","نه","ده","یازده","دوازده","سیزده","چهارده","پانزده","شانزده","هفده","هجده","نوزده"],T=["","","بیست","سی","چهل","پنجاه","شصت","هفتاد","هشتاد","نود"],H=["","صد","دویست","سیصد","چهارصد","پانصد","ششصد","هفتصد","هشتصد","نهصد"],S=["","هزار","میلیون","میلیارد","تریلیون","کوادریلیون"];
-function g(n){let p=[],h=Math.floor(n/100),r=n%100;if(h)p.push(H[h]);if(r){if(r<20)p.push(O[r]);else{let t=Math.floor(r/10),o=r%10;p.push(T[t]);if(o)p.push(O[o]);}}return p.join(" و ")}
-function w(v){v=String(v||"").replace(/[,٬\s]/g,"").replace(/[۰-۹]/g,d=>"۰۱۲۳۴۵۶۷۸۹".indexOf(d));if(!v)return "";let n=Math.trunc(Number(v));if(!Number.isFinite(n))return "";if(n===0)return "صفر تومان";let p=[],s=0;while(n){let x=n%1000;if(x){let z=g(x);if(s)z+=" "+S[s];p.unshift(z)}n=Math.floor(n/1000);s++}return p.join(" و ")+" تومان"}
-document.querySelectorAll(".amount-words-live").forEach(b=>{let i=document.getElementById(b.dataset.amountInput);if(!i)return;let u=()=>b.textContent=w(i.value)?"مبلغ به حروف: "+w(i.value):"";i.addEventListener("input",u);u()});
-})();
-</script>
-<script>
-document.addEventListener("DOMContentLoaded", function () {
-  const O=["صفر","یک","دو","سه","چهار","پنج","شش","هفت","هشت","نه","ده","یازده","دوازده","سیزده","چهارده","پانزده","شانزده","هفده","هجده","نوزده"],T=["","","بیست","سی","چهل","پنجاه","شصت","هفتاد","هشتاد","نود"],H=["","صد","دویست","سیصد","چهارصد","پانصد","ششصد","هفتصد","هشتصد","نهصد"],S=["","هزار","میلیون","میلیارد","تریلیون","کوادریلیون"];
-  function words(v){v=String(v||"").replace(/[,٬\s]/g,"").replace(/[۰-۹]/g,d=>"۰۱۲۳۴۵۶۷۸۹".indexOf(d));if(!v)return "";let n=Math.trunc(Number(v));if(!Number.isFinite(n))return "";if(n===0)return "صفر تومان";let p=[],s=0;while(n){let x=n%1000;if(x){let h=Math.floor(x/100),r=x%100,a=[];if(h)a.push(H[h]);if(r<20&&r)a.push(O[r]);else if(r){a.push(T[Math.floor(r/10)]);if(r%10)a.push(O[r%10]);}let z=a.join(" و ");if(s)z+=" "+S[s];p.unshift(z)}n=Math.floor(n/1000);s++}return p.join(" و ")+" تومان"}
-  document.querySelectorAll("input[name='total_amount'],input[name='monthly_payment'],input[name='service_fee']").forEach(function(input){let box=document.createElement("div");box.className="amount-words-live";input.insertAdjacentElement("afterend",box);function update(){box.textContent=input.value? "مبلغ به حروف: "+words(input.value):""}input.addEventListener("input",update);update()});
-});
-</script>{% endblock %}
+{% block title %}{{ title }}{% endblock %}
 {% block content %}
 <div class="plan-header"><h1>{{ title }}</h1></div>
 <form method="post" class="manager-form">
@@ -23,7 +9,9 @@ document.addEventListener("DOMContentLoaded", function () {
     <div class="field">
       {{ field.label_tag }}
       {{ field }}
-      {% if field.name == "total_amount" or field.name == "monthly_payment" or field.name == "service_fee" %}<div class="amount-words-live" data-amount-input="{{ field.auto_id }}"></div>{% endif %}
+      {% if field.name == "total_amount" or field.name == "monthly_payment" or field.name == "service_fee" %}
+        <div class="amount-words-live" data-amount-input="{{ field.auto_id }}" aria-live="polite"></div>
+      {% endif %}
       {% if field.help_text %}<div class="help-text">{{ field.help_text }}</div>{% endif %}
       {{ field.errors }}
     </div>
@@ -33,4 +21,58 @@ document.addEventListener("DOMContentLoaded", function () {
     <a class="btn btn-secondary" href="{% url 'loans:manager_dashboard' %}">انصراف</a>
   </div>
 </form>
+
+<script>
+(function () {
+  const ONES = ["صفر","یک","دو","سه","چهار","پنج","شش","هفت","هشت","نه","ده","یازده","دوازده","سیزده","چهارده","پانزده","شانزده","هفده","هجده","نوزده"];
+  const TENS = ["","","بیست","سی","چهل","پنجاه","شصت","هفتاد","هشتاد","نود"];
+  const HUNDREDS = ["","صد","دویست","سیصد","چهارصد","پانصد","ششصد","هفتصد","هشتصد","نهصد"];
+  const SCALES = ["","هزار","میلیون","میلیارد","تریلیون","کوادریلیون"];
+
+  function amountWords(value) {
+    let raw = String(value || "").replace(/[,٬\s]/g, "").replace(/[۰-۹]/g, d => "۰۱۲۳۴۵۶۷۸۹".indexOf(d));
+    if (!raw) return "";
+    let n = Math.trunc(Number(raw));
+    if (!Number.isFinite(n)) return "";
+    if (n === 0) return "صفر تومان";
+    if (n < 0) return "منفی " + amountWords(-n);
+
+    const groups = [];
+    let scale = 0;
+    while (n > 0) {
+      const part = n % 1000;
+      if (part) {
+        const h = Math.floor(part / 100);
+        const rest = part % 100;
+        const words = [];
+        if (h) words.push(HUNDREDS[h]);
+        if (rest) {
+          if (rest < 20) words.push(ONES[rest]);
+          else {
+            words.push(TENS[Math.floor(rest / 10)]);
+            if (rest % 10) words.push(ONES[rest % 10]);
+          }
+        }
+        let text = words.join(" و ");
+        if (scale) text += " " + SCALES[scale];
+        groups.unshift(text);
+      }
+      n = Math.floor(n / 1000);
+      scale++;
+    }
+    return groups.join(" و ") + " تومان";
+  }
+
+  document.querySelectorAll(".amount-words-live").forEach(function (output) {
+    const input = document.getElementById(output.dataset.amountInput);
+    if (!input) return;
+    function update() {
+      output.textContent = input.value ? "مبلغ به حروف: " + amountWords(input.value) : "";
+    }
+    input.addEventListener("input", update);
+    input.addEventListener("change", update);
+    update();
+  });
+})();
+</script>
 {% endblock %}
