@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block title %}مدیریت کاربران{% endblock %}
+{% block content %}
+<div class="plan-header"><h1>مدیریت کاربران</h1><p class="muted">جستجوی وضعیت کاربران؛ تغییرات حساس از پنل امن مدیریت انجام شود.</p></div>
+<form method="get" class="manager-filters"><input name="q" value="{{ q }}" placeholder="نام، موبایل یا کد ملی"><button class="btn" type="submit">جستجو</button><a class="btn btn-secondary" href="{% url 'loans:manager_users' %}">پاک کردن</a></form>
+<div class="manager-table-wrap"><table class="manager-table"><thead><tr><th>کاربر</th><th>موبایل</th><th>کد ملی</th><th>تأیید موبایل</th><th>فعال</th><th>مدیر</th><th>۲مرحله‌ای</th></tr></thead>
+<tbody>{% for u in users %}<tr><td><strong>{{ u.full_name }}</strong></td><td>{{ u.phone_number }}</td><td>{{ u.national_id|default:"—" }}</td><td>{{ u.phone_verified|yesno:"بله,خیر" }}</td><td>{{ u.is_active|yesno:"بله,خیر" }}</td><td>{{ u.is_staff|yesno:"بله,خیر" }}</td><td>{{ u.is_2fa_enabled|yesno:"بله,خیر" }}</td></tr>{% empty %}<tr><td colspan="7">کاربری پیدا نشد.</td></tr>{% endfor %}</tbody></table></div>
+<div class="manager-actions"><a class="btn" href="{% url 'admin:accounts_user_changelist' %}">مدیریت کامل کاربران</a><a class="btn btn-secondary" href="{% url 'loans:manager_dashboard' %}">بازگشت</a></div>
+{% endblock %}
