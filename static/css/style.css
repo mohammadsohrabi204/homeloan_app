@@ -339,3 +339,12 @@ section.block { margin-bottom: 36px; }
 @media (max-width: 420px) {
   .manager-grid { grid-template-columns: 1fr; }
 }
+
+.manager-filters { display:grid; grid-template-columns:2fr 1.2fr 1.2fr auto auto; gap:10px; align-items:center; margin:14px 0 4px; }
+.manager-filters input,.manager-filters select,.manager-reject-form input { min-height:40px; border:1px solid var(--hairline); background:var(--paper-50); padding:8px 10px; font:inherit; }
+.manager-reject-form { display:flex; gap:6px; margin-top:6px; }
+.manager-reject-form input { width:150px; min-width:110px; }
+.btn-small { padding:6px 9px; font-size:.78rem; }
+.btn-danger { border-color:var(--rust-500); }
+@media (max-width:900px) { .manager-filters { grid-template-columns:1fr 1fr; } }
+@media (max-width:520px) { .manager-filters { grid-template-columns:1fr; } }
