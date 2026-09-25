@@ -58,7 +58,8 @@ class LoanPlan(models.Model):
     monthly_payment = models.DecimalField("قسط ماهانه هر عضو (تومان)", max_digits=14, decimal_places=0, validators=[MinValueValidator(1)])
     service_fee = models.DecimalField(
         "هزینهٔ خدمات صندوق (تومان)", max_digits=14, decimal_places=0, default=0,
-        help_text="هزینهٔ اداره صندوق، نه سود/بهره — این صندوق قرض‌الحسنه (بدون سود) است.", validators=[MinValueValidator(0)],
+        help_text="هزینهٔ اداره صندوق، نه سود/بهره — این صندوق قرض‌الحسنه (بدون سود) است. "
+                  "یک‌بارمصرف است و به قسطِ دورهٔ اول هر عضو اضافه می‌شود.", validators=[MinValueValidator(0)],
     )
     duration_months = models.PositiveIntegerField("تعداد دوره / ماه", validators=[MinValueValidator(1)], help_text="هم تعداد اقساط و هم تعداد قرعه‌کشی‌های این طرح.")
     capacity = models.PositiveIntegerField("ظرفیت (حداکثر تعداد عضو)", validators=[MinValueValidator(1)])
@@ -98,10 +99,6 @@ class LoanPlan(models.Model):
     def slots_left(self):
         return max(self.capacity - self.confirmed_count, 0)
 
-    @property
-    def total_pool_per_round(self):
-        return self.monthly_payment * self.capacity
-
 
 class Reservation(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="reservations")
@@ -110,6 +107,10 @@ class Reservation(models.Model):
 
     has_won = models.BooleanField("برندهٔ قرعه‌کشی شده", default=False)
     won_round = models.PositiveIntegerField("دورهٔ برد", null=True, blank=True)
+    payout_confirmed_at = models.DateTimeField(
+        "تأیید واریز وام توسط مدیر", null=True, blank=True,
+        help_text="زمانی که مدیر، واریز مبلغ وام به حساب برنده را تأیید می‌کند.",
+    )
 
     reserved_at = models.DateTimeField(auto_now_add=True)
 
@@ -120,6 +121,10 @@ class Reservation(models.Model):
 
     def __str__(self):
         return f"{self.user} - {self.loan_plan}"
+
+    @property
+    def jalali_payout_confirmed_at(self):
+        return format_jalali(self.payout_confirmed_at)
 
 
 class Payment(models.Model):

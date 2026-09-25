@@ -36,6 +36,18 @@
   <h2>اقساط من</h2>
   {% if my_reservation.has_won %}
     <p><span class="badge badge-brass">شما برندهٔ دورهٔ {{ my_reservation.won_round }} این وام شده‌اید</span></p>
+    {% if my_reservation.payout_confirmed_at %}
+      <p class="small">واریز وام تأیید شده است — تاریخ: {{ my_reservation.jalali_payout_confirmed_at }}</p>
+    {% else %}
+      <p class="small muted">در انتظار واریز وام توسط مدیر؛ پس از واریز، مدیر آن را در پنل تأیید می‌کند.</p>
+    {% endif %}
+  {% endif %}
+
+  {% if can_cancel %}
+    <form method="post" action="{% url 'loans:cancel' plan.id %}" class="receipt-form"
+          onsubmit="return confirm('آیا از لغو رزرو مطمئن هستید؟ جای خالی برای رزرو بقیه باز می‌شود.')">
+      <button type="submit" class="btn btn-secondary">لغو رزرو من</button>
+    </form>
   {% endif %}
 
   <ol class="round-tracker">
@@ -105,7 +117,7 @@
           <div class="countdown" data-target="{{ d.scheduled_at|date:'c' }}">در حال محاسبه…</div>
         {% elif d.status == 'completed' %}
           برگزار شد در {{ d.jalali_executed_at }} —
-          برنده: <strong>{{ d.winner_reservation.user.full_name|default:"—" }}</strong>
+          برنده: <strong>{% if can_see_members %}{{ d.winner_reservation.user.full_name|default:"—" }}{% else %}عضو این طرح{% endif %}</strong>
         {% else %}
           لغو شده
         {% endif %}

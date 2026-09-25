@@ -101,17 +101,46 @@ class LoanPlanAdmin(admin.ModelAdmin):
 
 @admin.register(Reservation)
 class ReservationAdmin(admin.ModelAdmin):
-    list_display = ("user", "loan_plan", "status", "has_won", "won_round", "reserved_at")
+    list_display = ("user", "loan_plan", "status", "has_won", "won_round", "payout_status", "reserved_at")
     list_filter = ("status", "has_won", "loan_plan")
     search_fields = ("user__full_name", "user__phone_number")
     autocomplete_fields = ["user", "loan_plan"]
-    readonly_fields = ("user", "loan_plan", "status", "has_won", "won_round", "reserved_at")
+    readonly_fields = ("user", "loan_plan", "status", "has_won", "won_round", "payout_confirmed_at", "reserved_at")
+    actions = ["action_confirm_payout"]
 
     def has_add_permission(self, request):
         return False
 
     def has_delete_permission(self, request, obj=None):
         return False
+
+    @admin.display(description="واریز وام", ordering="payout_confirmed_at")
+    def payout_status(self, obj):
+        if obj.payout_confirmed_at:
+            return f"تأییدشده ({obj.jalali_payout_confirmed_at})"
+        if obj.has_won:
+            return "در انتظار واریز"
+        return "—"
+
+    @admin.action(description="تأیید واریز وام به برندگان انتخاب‌شده (پس از اجرای قرعه‌کشی و انجام واریز توسط مدیر)")
+    def action_confirm_payout(self, request, queryset):
+        confirmed = 0
+        for reservation in queryset.filter(has_won=True):
+            if not reservation.payout_confirmed_at:
+                reservation.payout_confirmed_at = timezone.now()
+                reservation.save(update_fields=["payout_confirmed_at"])
+                log_action(
+                    request.user,
+                    "payout_confirmed",
+                    {
+                        "reservation_id": reservation.id,
+                        "plan_id": reservation.loan_plan_id,
+                        "round": reservation.won_round,
+                    },
+                    request.META.get("REMOTE_ADDR"),
+                )
+                confirmed += 1
+        self.message_user(request, f"واریز وام {confirmed} برنده تأیید شد.")
 
 
 @admin.register(Payment)

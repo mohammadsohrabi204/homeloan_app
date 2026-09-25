@@ -48,10 +48,13 @@ def start_loan_plan(plan):
     for reservation in confirmed:
         for round_no in range(1, plan.duration_months + 1):
             due = plan.start_date + relativedelta(months=round_no - 1)
+            # هزینهٔ خدمات صندوق یک‌بارمصرف است و به قسطِ دورهٔ اول اضافه می‌شود
+            # تا واقعاً جمع‌آوری شود (نه فقط نمایشی بماند).
+            amount = plan.monthly_payment + (plan.service_fee if round_no == 1 else 0)
             Payment.objects.get_or_create(
                 reservation=reservation,
                 round_number=round_no,
-                defaults={"amount": plan.monthly_payment, "due_date": due, "status": PaymentStatus.PENDING},
+                defaults={"amount": amount, "due_date": due, "status": PaymentStatus.PENDING},
             )
 
     return plan

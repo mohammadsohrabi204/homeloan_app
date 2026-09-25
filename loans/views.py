@@ -37,8 +37,9 @@ def plan_detail(request, plan_id):
 
     # فقط اعضای همان طرح (یا مدیر) فهرست کامل اعضا و وضعیت پرداختشان را می‌بینند —
     # کاربرانی که هنوز عضو نشده‌اند فقط آمار کلی (ظرفیت/باقی‌مانده) را می‌بینند.
+    can_see_members = bool(my_reservation) or request.user.is_staff
     members_view = []
-    if my_reservation or request.user.is_staff:
+    if can_see_members:
         for r in plan.reservations.filter(status=ReservationStatus.CONFIRMED).select_related("user"):
             members_view.append(
                 {
@@ -58,6 +59,8 @@ def plan_detail(request, plan_id):
         {
             "plan": plan,
             "my_reservation": my_reservation,
+            "can_see_members": can_see_members,
+            "can_cancel": bool(my_reservation) and plan.status in (PlanStatus.OPEN, PlanStatus.FULL),
             "members_view": members_view,
             "my_payments": my_payments,
             "draws": draws,
@@ -88,9 +91,16 @@ def reserve(request, plan_id):
                 messages.warning(request, "ظرفیت این وام تکمیل شده است.")
                 return redirect("loans:plan_detail", plan_id=plan.id)
 
-            Reservation.objects.create(
-                user=request.user, loan_plan=locked_plan, status=ReservationStatus.CONFIRMED
-            )
+            # اگر این کاربر قبلاً رزروشده و آن را لغو کرده، همان ردیف را
+            # دوباره فعال می‌کنیم (محدودیت یکتایی (کاربر، طرح) اجازهٔ ردیف دوم را نمی‌دهد).
+            previous = locked_plan.reservations.filter(user=request.user, status=ReservationStatus.CANCELLED).first()
+            if previous:
+                previous.status = ReservationStatus.CONFIRMED
+                previous.save(update_fields=["status"])
+            else:
+                Reservation.objects.create(
+                    user=request.user, loan_plan=locked_plan, status=ReservationStatus.CONFIRMED
+                )
 
             if locked_plan.slots_left <= 0:
                 locked_plan.status = PlanStatus.FULL
@@ -101,4 +111,46 @@ def reserve(request, plan_id):
 
     log_action(request.user, "reservation_created", {"plan_id": plan.id}, request.META.get("REMOTE_ADDR"))
     messages.success(request, "رزرو شما با موفقیت ثبت شد.")
+    return redirect("loans:plan_detail", plan_id=plan.id)
+
+
+@login_required
+def cancel_reservation(request, plan_id):
+    """لغو رزرو توسط خود عضو — فقط تا پیش از شروع طرح (ساخت اقساط).
+
+    پس از شروع، تعهد قسطی وجود دارد و لغو فقط با تصمیم مدیر ممکن است.
+    """
+    if request.method != "POST":
+        return redirect("loans:plan_detail", plan_id=plan_id)
+
+    plan = get_object_or_404(LoanPlan, pk=plan_id)
+
+    with transaction.atomic():
+        locked_plan = LoanPlan.objects.select_for_update().get(pk=plan.id)
+        reservation = locked_plan.reservations.filter(
+            user=request.user, status=ReservationStatus.CONFIRMED
+        ).select_for_update().first()
+
+        if not reservation:
+            messages.info(request, "رزرو فعالی برای لغو وجود ندارد.")
+            return redirect("loans:plan_detail", plan_id=plan.id)
+
+        if locked_plan.status not in (PlanStatus.OPEN, PlanStatus.FULL):
+            messages.warning(request, "طرح شروع شده است؛ دیگر امکان لغو رزرو از پنل کاربری نیست.")
+            return redirect("loans:plan_detail", plan_id=plan.id)
+
+        reservation.status = ReservationStatus.CANCELLED
+        reservation.save(update_fields=["status"])
+
+        # اگر طرح «تکمیل» بود و با لغو، جایی خالی شد، دوباره برای رزرو باز می‌شود.
+        if locked_plan.status == PlanStatus.FULL and locked_plan.slots_left > 0:
+            locked_plan.status = PlanStatus.OPEN
+            locked_plan.save(update_fields=["status"])
+
+    log_action(
+        request.user, "reservation_cancelled",
+        {"plan_id": plan.id, "reservation_id": reservation.id},
+        request.META.get("REMOTE_ADDR"),
+    )
+    messages.success(request, "رزرو شما لغو شد.")
     return redirect("loans:plan_detail", plan_id=plan.id)

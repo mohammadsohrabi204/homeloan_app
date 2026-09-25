@@ -3,6 +3,8 @@
 اجرا:  python manage.py test
 """
 from datetime import date
+from decimal import Decimal
+
 from django.db import IntegrityError, transaction
 from django.test import TestCase
 from django.utils import timezone
@@ -74,6 +76,53 @@ class LoanLifecycleTests(TestCase):
         self.assertIn("/accounts/login/", response.url)
         self.assertEqual(self.plan.confirmed_count, 0)
 
+    # --- لغو رزرو -------------------------------------------------------
+    def test_member_can_cancel_reservation_before_start(self):
+        self.client.force_login(self.member1)
+        self.client.post(f"/plans/{self.plan.id}/reserve/")
+        self.assertEqual(self.plan.confirmed_count, 1)
+
+        self.client.post(f"/plans/{self.plan.id}/cancel/")
+        self.plan.refresh_from_db()
+        self.assertEqual(self.plan.confirmed_count, 0)
+        self.assertEqual(self.plan.status, PlanStatus.OPEN)
+
+    def test_cancel_frees_a_full_plan(self):
+        Reservation.objects.create(user=self.member1, loan_plan=self.plan)
+        Reservation.objects.create(user=self.member2, loan_plan=self.plan)
+        self.plan.status = PlanStatus.FULL
+        self.plan.save(update_fields=["status"])
+
+        self.client.force_login(self.member1)
+        self.client.post(f"/plans/{self.plan.id}/cancel/")
+        self.plan.refresh_from_db()
+        self.assertEqual(self.plan.status, PlanStatus.OPEN)
+        self.assertEqual(self.plan.confirmed_count, 1)
+
+    def test_cancellation_after_start_is_blocked(self):
+        Reservation.objects.create(user=self.member1, loan_plan=self.plan)
+        start_loan_plan(self.plan)
+
+        self.client.force_login(self.member1)
+        self.client.post(f"/plans/{self.plan.id}/cancel/")
+        res = Reservation.objects.get(user=self.member1, loan_plan=self.plan)
+        self.assertEqual(res.status, ReservationStatus.CONFIRMED)
+
+    def test_re_reserve_after_cancellation_reuses_row(self):
+        self.client.force_login(self.member1)
+        self.client.post(f"/plans/{self.plan.id}/reserve/")
+        self.client.post(f"/plans/{self.plan.id}/cancel/")
+        self.client.post(f"/plans/{self.plan.id}/reserve/")
+
+        self.plan.refresh_from_db()
+        self.assertEqual(self.plan.confirmed_count, 1)
+        self.assertEqual(Reservation.objects.filter(user=self.member1, loan_plan=self.plan).count(), 1)
+
+    def test_cancel_without_reservation_is_harmless(self):
+        self.client.force_login(self.member1)
+        self.client.post(f"/plans/{self.plan.id}/cancel/")
+        self.assertEqual(self.plan.confirmed_count, 0)
+
     # --- شروع طرح و ساخت اقساط ---------------------------------------
     def test_start_plan_generates_installments_for_every_member(self):
         Reservation.objects.create(user=self.member1, loan_plan=self.plan)
@@ -93,6 +142,20 @@ class LoanLifecycleTests(TestCase):
         self.plan.save()
         start_loan_plan(self.plan)
         self.assertEqual(Payment.objects.filter(reservation__loan_plan=self.plan).count(), 3)
+
+    def test_service_fee_is_collected_in_first_installment_only(self):
+        self.plan.service_fee = 5_000_000
+        self.plan.save(update_fields=["service_fee"])
+        Reservation.objects.create(user=self.member1, loan_plan=self.plan)
+
+        start_loan_plan(self.plan)
+        amounts = {
+            p.round_number: p.amount
+            for p in Payment.objects.filter(reservation__loan_plan=self.plan)
+        }
+        self.assertEqual(amounts[1], Decimal("15000000"))  # قسط + هزینهٔ خدمات
+        self.assertEqual(amounts[2], Decimal("10000000"))
+        self.assertEqual(amounts[3], Decimal("10000000"))
 
     def test_start_plan_without_members_raises(self):
         with self.assertRaises(ValueError):
@@ -270,6 +333,50 @@ class PrivacyAndPermissionTests(TestCase):
         payment = Payment.objects.filter(reservation__user=self.member).first()
         self.client.force_login(self.member)
         self.assertEqual(self.client.get(f"/payment/pay/{payment.id}/").status_code, 405)
+
+    def _run_first_draw(self):
+        start_loan_plan(self.plan)
+        Payment.objects.filter(reservation__user=self.member, round_number=1).update(
+            status=PaymentStatus.PAID, paid_at=timezone.now()
+        )
+        draw = LotteryDraw.objects.create(
+            loan_plan=self.plan, round_number=1, scheduled_at=timezone.now(), created_by=self.admin
+        )
+        return run_lottery_draw(draw, actor=self.admin)
+
+    def test_winner_name_hidden_from_non_members(self):
+        winner = self._run_first_draw()
+
+        self.client.force_login(self.outsider)
+        response = self.client.get(f"/plans/{self.plan.id}/")
+        self.assertNotContains(response, winner.user.full_name)
+
+        self.client.force_login(self.member)
+        response = self.client.get(f"/plans/{self.plan.id}/")
+        self.assertContains(response, winner.user.full_name)
+
+    def test_admin_can_confirm_payout_to_winner(self):
+        winner = self._run_first_draw()
+        self.assertFalse(winner.payout_confirmed_at)
+
+        self.client.force_login(self.admin)
+        self.client.post("/admin/loans/reservation/", {
+            "action": "action_confirm_payout",
+            "_selected_action": str(winner.id),
+        })
+        winner.refresh_from_db()
+        self.assertTrue(winner.payout_confirmed_at)
+
+    def test_regular_member_cannot_confirm_payout(self):
+        winner = self._run_first_draw()
+
+        self.client.force_login(self.outsider)
+        self.client.post("/admin/loans/reservation/", {
+            "action": "action_confirm_payout",
+            "_selected_action": str(winner.id),
+        }, follow=True)
+        winner.refresh_from_db()
+        self.assertFalse(winner.payout_confirmed_at)
 
 
 class PaymentGatewayTests(TestCase):
