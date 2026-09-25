@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}{{ title }}{% endblock %}
+{% block content %}
+<div class="plan-header"><h1>{{ title }}</h1></div>
+<form method="post" class="manager-form">
+  {% csrf_token %}
+  {{ form.non_field_errors }}
+  {% for field in form %}
+    <div class="field">
+      {{ field.label_tag }}
+      {{ field }}
+      {% if field.help_text %}<div class="help-text">{{ field.help_text }}</div>{% endif %}
+      {{ field.errors }}
+    </div>
+  {% endfor %}
+  <div class="manager-actions">
+    <button class="btn" type="submit">{{ submit_label|default:"ذخیره" }}</button>
+    <a class="btn btn-secondary" href="{% url 'loans:manager_dashboard' %}">انصراف</a>
+  </div>
+</form>
+{% endblock %}
