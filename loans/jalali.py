@@ -96,3 +96,39 @@ def amount_in_words(value):
         number //= 1000
         scale += 1
     return " و ".join(reversed(parts)) + " تومان"
+
+
+def jalali_to_gregorian(jyear, jmonth, jday):
+    jyear = int(jyear); jmonth = int(jmonth); jday = int(jday)
+    jy = jyear - 979
+    days = 365 * jy + (jy // 33) * 8 + ((jy % 33 + 3) // 4)
+    if jmonth <= 6:
+        days += (jmonth - 1) * 31
+    else:
+        days += (jmonth - 7) * 30 + 186
+    days += jday - 1
+    gday = days + 79
+    gy = 1600 + 400 * (gday // 146097)
+    gday %= 146097
+    leap = True
+    if gday >= 36525:
+        gday -= 1
+        gy += 100 * (gday // 36524)
+        gday %= 36524
+        if gday < 365:
+            leap = False
+        else:
+            gday += 1
+    gy += 4 * (gday // 1461)
+    gday %= 1461
+    if gday >= 366:
+        leap = False
+        gday -= 1
+        gy += gday // 365
+        gday %= 365
+    month_days = [31, 29 if leap else 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+    gm = 1
+    while gm <= 12 and gday >= month_days[gm - 1]:
+        gday -= month_days[gm - 1]
+        gm += 1
+    return gy, gm, gday + 1
