@@ -51,7 +51,7 @@ class LoanPlanAdmin(admin.ModelAdmin):
     به پنل مدیریت جنگو ندارند و فقط از صفحات عمومی سایت رزرو/پرداخت انجام می‌دهند.
     """
 
-    list_display = ("title", "total_amount", "monthly_payment", "duration_months", "capacity_display", "status", "created_at")
+    list_display = ("title", "total_amount_display", "monthly_payment_display", "service_fee_display", "duration_months", "capacity_display", "status", "created_at")
     list_filter = ("status",)
     search_fields = ("title",)
     readonly_fields = ("created_by", "created_at")
@@ -80,6 +80,18 @@ class LoanPlanAdmin(admin.ModelAdmin):
                 "duration_months", "capacity", "status", "start_date",
             )
         return self.readonly_fields
+
+    @admin.display(description="مبلغ وام")
+    def total_amount_display(self, obj):
+        return format_html("{} تومان<br><small>{}</small>", f"{obj.total_amount:,}".replace(",", "٬"), obj.total_amount_words)
+
+    @admin.display(description="قسط ماهانه")
+    def monthly_payment_display(self, obj):
+        return format_html("{} تومان<br><small>{}</small>", f"{obj.monthly_payment:,}".replace(",", "٬"), obj.monthly_payment_words)
+
+    @admin.display(description="هزینه خدمات")
+    def service_fee_display(self, obj):
+        return format_html("{} تومان<br><small>{}</small>", f"{obj.service_fee:,}".replace(",", "٬"), obj.service_fee_words)
 
     @admin.display(description="ظرفیت پرشده")
     def capacity_display(self, obj):
@@ -116,7 +128,7 @@ class ReservationAdmin(admin.ModelAdmin):
 
 @admin.register(Payment)
 class PaymentAdmin(admin.ModelAdmin):
-    list_display = ("reservation", "round_number", "amount", "jalali_due", "status", "gateway", "receipt_preview", "jalali_paid")
+    list_display = ("reservation", "round_number", "amount_display", "jalali_due", "status", "gateway", "receipt_preview", "jalali_paid")
     list_display_links = ("reservation",)
     list_per_page = 25
     ordering = ("-receipt_submitted_at", "-id")
@@ -134,6 +146,10 @@ class PaymentAdmin(admin.ModelAdmin):
 
     def has_delete_permission(self, request, obj=None):
         return False
+
+    @admin.display(description="مبلغ")
+    def amount_display(self, obj):
+        return format_html("{} تومان<br><small>{}</small>", f"{obj.amount:,}".replace(",", "٬"), obj.amount_words)
 
     @admin.display(description="رسید کارت‌به‌کارت")
     def receipt_status(self, obj):
