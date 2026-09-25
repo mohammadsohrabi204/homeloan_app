@@ -146,6 +146,10 @@ class LoanPlan(models.Model):
         return self.title
 
     @property
+    def jalali_start_date(self):
+        return format_jalali(self.start_date)
+
+    @property
     def total_amount_words(self):
         return amount_in_words(self.total_amount)
 
