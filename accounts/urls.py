@@ -12,5 +12,6 @@ urlpatterns = [
     path("login/2fa/", views.verify_2fa_view, name="verify_2fa"),
     path("logout/", views.logout_view, name="logout"),
     path("2fa/setup/", views.setup_2fa_view, name="setup_2fa"),
+    path("2fa/disable/", views.disable_2fa_view, name="disable_2fa"),
     path("me/", views.account_view, name="account"),
 ]

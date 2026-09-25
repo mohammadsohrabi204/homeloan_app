@@ -27,6 +27,13 @@
   <h2>امنیت حساب</h2>
   {% if user.is_2fa_enabled %}
     <p><span class="badge badge-teal">تأیید دومرحله‌ای فعال است</span></p>
+    <form method="post" action="{% url 'accounts:disable_2fa' %}" class="bank-details-form"
+          onsubmit="return confirm('از فعال بودن ۲FA مطمئن هستید؟ برای جلوگیری از دسترسی دیگران، با فعال بودن ۲FA حساب شما امن‌تر است.')">
+      {% csrf_token %}
+      <div class="field"><label>کد شش‌رقمی اپ احراز هویت (برای تایید غیرفعال‌سازی)</label>
+        <input type="text" name="token" required inputmode="numeric" autocomplete="one-time-code" minlength="6" maxlength="6"></div>
+      <button type="submit" class="btn btn-secondary">غیرفعال‌سازی تأیید دومرحله‌ای</button>
+    </form>
   {% else %}
     <p class="muted">تأیید دومرحله‌ای فعال نیست. {% if user.is_staff %}به‌شدت توصیه می‌شود چون حساب شما به ساخت وام و اجرای قرعه‌کشی دسترسی دارد.{% endif %}</p>
     <a href="{% url 'accounts:setup_2fa' %}" class="btn">فعال‌سازی تأیید دومرحله‌ای</a>

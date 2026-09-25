@@ -77,6 +77,11 @@ def verify_phone_view(request):
         return redirect("accounts:register")
     form = PhoneOTPForm(request.POST or None)
     if request.method == "POST" and form.is_valid():
+        # محدودسازی تلاش‌های واردکردن کد: کد پیامکی ۶ رقمی است و بدون سقف،
+        # حدس‌زدن آن در پنجرهٔ اعتبار (۵ دقیقه) ممکن می‌شود.
+        if is_rate_limited(f"phone-otp-verify:{user.id}", limit=10, window_seconds=300):
+            messages.error(request, "تلاش‌های واردکردن کد بیش از حد مجاز است. برای دریافت کد جدید، دکمهٔ ارسال مجدد را بزنید.")
+            return render(request, "accounts/verify_phone.html", {"form": form, "phone": user.phone_number})
         expired = not user.phone_otp_expires_at or user.phone_otp_expires_at < timezone.now()
         if not expired and check_password(form.cleaned_data["token"], user.phone_otp_hash):
             user.phone_verified = True
@@ -124,16 +129,45 @@ def login_view(request):
             password = form.cleaned_data["password"]
             user = authenticate(request, username=phone, password=password)
 
-            if user is None or not user.is_active:
+            if user is None:
+                # authenticate() برای کاربران «غیرفعال» هم None برمی‌گرداند. کاربر
+                # نیمه‌ثبت‌نام‌شده (در زمان ثبت‌نام ساخته شده اما ارسال پیامک شکست
+                # خورده و هنوز غیرفعال است) باید بتواند با کد تازه، ثبت‌نام را به‌جا
+                # بیاورد؛ بنابراین چنین کاربری را مستقیماً بررسی می‌کنیم.
+                candidate = User.objects.filter(phone_number=phone).first()
+                if candidate is not None and not candidate.phone_verified and check_password(password, candidate.password):
+                    if _send_phone_otp(request, candidate):
+                        messages.info(request, "برای ورود، ابتدا شماره موبایل خود را با کد پیامک‌شده تأیید کنید.")
+                        return redirect("accounts:verify_phone")
+                    messages.error(request, "ارسال کد تأیید ناموفق بود. تنظیمات سرویس پیامک را بررسی کنید.")
+                    return render(request, "accounts/login.html", {"form": form})
+
+                # در تمام مسایر ناموفق، یک هش اضافه (واقعی یا خال) اجرا می‌کنیم تا
+                # زمان پاسخ برای «کاربر یافت‌نشده»، «رمز اشتباه» و «حساب غیرفعال»
+                # یکسان بماند و وجود حساب از زمان پاسخ لو نرود.
+                if candidate is None or candidate.phone_verified:
+                    User().set_password(password)
+
                 messages.error(request, "شماره موبایل یا رمز عبور اشتباه است.")
                 log_action(None, "login_failed", {"phone": phone}, ip)
                 return render(request, "accounts/login.html", {"form": form})
 
             if not user.phone_verified:
+                # کاربر «نیمه‌ثبت‌نام‌شده»: کاربر در زمان ثبت‌نام ساخته شده اما
+                # ارسال کد پیامکی ناموفق بوده و حساب هنوز غیرفعال است. با ارسال
+                # کد جدید اینجا، او می‌تواند ثبت‌نام را به‌جا بیاورد و یک خطای
+                # گذرای پیامک باعث غیرقابل‌استفاده‌شدن دائمی حساب نمی‌شود.
                 if _send_phone_otp(request, user):
                     messages.info(request, "برای ورود، ابتدا شماره موبایل خود را با کد پیامک‌شده تأیید کنید.")
                     return redirect("accounts:verify_phone")
                 messages.error(request, "ارسال کد تأیید ناموفق بود. تنظیمات سرویس پیامک را بررسی کنید.")
+                return render(request, "accounts/login.html", {"form": form})
+
+            if not user.is_active:
+                # حسابی که (مثلاً توسط مدیر) غیرفعال شده — همان رفتار قبلی:
+                # پیام مبهم تا وجود/غیرفعال‌بودن حساب لو نرود.
+                messages.error(request, "شماره موبایل یا رمز عبور اشتباه است.")
+                log_action(None, "login_failed", {"phone": phone}, ip)
                 return render(request, "accounts/login.html", {"form": form})
 
             if user.is_2fa_enabled:
@@ -222,6 +256,29 @@ def setup_2fa_view(request):
         "accounts/setup_2fa.html",
         {"form": form, "qr_base64": qr_base64, "secret": secret},
     )
+
+
+@login_required
+@require_POST
+def disable_2fa_view(request):
+    """غیرفعال‌کردن ۲FA فقط با کد معتبر اپ احراز هویت — تا حساب از روی دستگاه
+    غیرمعتبرِ کسی که اپ را ندارد باز نشود."""
+    if not request.user.is_2fa_enabled:
+        return redirect("accounts:account")
+
+    form = TwoFAForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        totp = pyotp.TOTP(request.user.totp_secret or "")
+        if totp.verify(form.cleaned_data["token"], valid_window=1):
+            request.user.totp_secret = None
+            request.user.is_2fa_enabled = False
+            request.user.save(update_fields=["totp_secret", "is_2fa_enabled"])
+            log_action(request.user, "2fa_disabled", ip_address=_client_ip(request))
+            messages.success(request, "احراز هویت دو مرحله‌ای غیرفعال شد.")
+        else:
+            messages.error(request, "کد وارد شده صحیح نیست؛ ۲FA هنوز فعال است.")
+
+    return redirect("accounts:account")
 
 
 @login_required

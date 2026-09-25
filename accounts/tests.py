@@ -1,7 +1,11 @@
 """تست‌های ثبت‌نام، ورود، محدودسازی نرخ و احراز هویت دومرحله‌ای."""
+from unittest import mock
+
 import pyotp
+from django.contrib.auth.hashers import make_password
 from django.core.cache import cache
 from django.test import TestCase
+from django.utils import timezone
 
 from .models import User
 from .ratelimit import is_rate_limited
@@ -144,3 +148,96 @@ class RateLimitTests(TestCase):
         for _ in range(3):
             is_rate_limited("key-a", limit=3, window_seconds=60)
         self.assertFalse(is_rate_limited("key-b", limit=3, window_seconds=60))
+
+
+class PhoneOTPTests(TestCase):
+    """ورود دومرحله‌ایِ شمارهٔ موبایل (OTP پیامکی)"""
+
+    def setUp(self):
+        # شبیه‌سازی کاربر «نیمه‌ثبت‌نام‌شده»: حساب ساخته شده اما پیامک نرفته
+        # (کاربر غیرفعال و شماره تأییدنشده)
+        self.user = User.objects.create_user(
+            phone_number="09121110001", full_name="علی رضایی", password="StrongPass!2026",
+            phone_verified=False, is_active=False,
+        )
+        cache.clear()
+
+    def test_otp_verification_is_rate_limited(self):
+        self.user.phone_otp_hash = make_password("123456")
+        self.user.phone_otp_expires_at = timezone.now() + timezone.timedelta(minutes=5)
+        self.user.save(update_fields=["phone_otp_hash", "phone_otp_expires_at"])
+        self.client.session["pending_phone_verification_user_id"] = self.user.id
+        self.client.session.save()
+
+        for _ in range(10):
+            self.client.post("/accounts/verify-phone/", {"token": "000000"})
+
+        # تلاش ۱۱ام مسدود می‌شود، حتی با کد درست — تا حدس‌زدن کد ۶ رقمی سخت شود
+        self.client.post("/accounts/verify-phone/", {"token": "123456"})
+        self.user.refresh_from_db()
+        self.assertFalse(self.user.phone_verified)
+
+    def test_inactive_unverified_user_can_finish_registration_via_login(self):
+        """اگر ارسال SMS در ثبت‌نام شکست بخورد، کاربر با ورود دوباره کد تازه می‌گیرد."""
+        sent = {}
+        with mock.patch(
+            "accounts.views.send_phone_otp",
+            side_effect=lambda phone, code: sent.update(code=code) or True,
+        ):
+            response = self.client.post("/accounts/login/", {
+                "phone_number": "09121110001", "password": "StrongPass!2026",
+            })
+        self.assertRedirects(response, "/accounts/verify-phone/", status_code=302)
+        self.assertFalse(response.wsgi_request.user.is_authenticated)
+
+        self.client.post("/accounts/verify-phone/", {"token": sent["code"]}, follow=True)
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.phone_verified)
+        self.assertTrue(self.user.is_active)
+
+    def test_deactivated_verified_user_cannot_login(self):
+        User.objects.create_user(
+            phone_number="09121110002", full_name="حساب غیرفعال", password="StrongPass!2026",
+            phone_verified=True, is_active=False,
+        )
+        response = self.client.post("/accounts/login/", {
+            "phone_number": "09121110002", "password": "StrongPass!2026",
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(response.wsgi_request.user.is_authenticated)
+
+
+class TwoFactorDisableTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            phone_number="09121110001", full_name="علی رضایی", password="StrongPass!2026",
+            phone_verified=True,
+        )
+        self.user.totp_secret = pyotp.random_base32()
+        self.user.is_2fa_enabled = True
+        self.user.save()
+        cache.clear()
+
+    def test_disable_2fa_with_valid_code(self):
+        self.client.force_login(self.user)
+        self.client.post("/accounts/2fa/disable/", {"token": pyotp.TOTP(self.user.totp_secret).now()})
+        self.user.refresh_from_db()
+        self.assertFalse(self.user.is_2fa_enabled)
+        self.assertIsNone(self.user.totp_secret)
+
+        # ورود بعدی دیگر مرحلهٔ دومرحله‌ای نمی‌خواهد
+        self.client.logout()
+        response = self.client.post("/accounts/login/", {
+            "phone_number": "09121110001", "password": "StrongPass!2026",
+        }, follow=True)
+        self.assertEqual(response.request["PATH_INFO"], "/")
+
+    def test_disable_2fa_rejects_wrong_code(self):
+        self.client.force_login(self.user)
+        self.client.post("/accounts/2fa/disable/", {"token": "000000"})
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.is_2fa_enabled)
+
+    def test_disable_2fa_requires_post(self):
+        self.client.force_login(self.user)
+        self.assertEqual(self.client.get("/accounts/2fa/disable/").status_code, 405)
