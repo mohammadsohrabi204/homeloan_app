@@ -24,6 +24,38 @@ services:
     expose:
       - "5432"
 
+  worker:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgres://homeloan:${POSTGRES_PASSWORD:-change-this-password}@db:5432/homeloan
+      CELERY_BROKER_URL: redis://redis:6379/0
+    command: celery -A config worker -l INFO
+    volumes:
+      - media_files:/app/media
+
+  beat:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgres://homeloan:${POSTGRES_PASSWORD:-change-this-password}@db:5432/homeloan
+      CELERY_BROKER_URL: redis://redis:6379/0
+    command: celery -A config beat -l INFO
+
   web:
     build: .
     restart: unless-stopped
