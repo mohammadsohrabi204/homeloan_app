@@ -348,3 +348,5 @@ section.block { margin-bottom: 36px; }
 .btn-danger { border-color:var(--rust-500); }
 @media (max-width:900px) { .manager-filters { grid-template-columns:1fr 1fr; } }
 @media (max-width:520px) { .manager-filters { grid-template-columns:1fr; } }
+
+.manager-form{max-width:760px;margin:20px 0}.manager-form select,.manager-form input[type="number"],.manager-form input[type="date"],.manager-form input[type="datetime-local"],.manager-form input[type="text"],.manager-form textarea,.manager-form input[type="tel"]{width:100%;padding:10px 12px;border:1px solid var(--hairline);background:#fff;font:inherit}.manager-form select:focus,.manager-form input:focus,.manager-form textarea:focus{outline:2px solid var(--brass-500);outline-offset:1px}.manager-actions form{display:inline-flex;margin:0}.manager-actions a{white-space:nowrap}.manager-section h2{border-bottom:1px solid var(--hairline);padding-bottom:8px}
