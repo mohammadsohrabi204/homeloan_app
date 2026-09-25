@@ -7,6 +7,14 @@ from .jalali import jalali_to_gregorian
 
 
 class ManagerLoanPlanForm(forms.ModelForm):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance and self.instance.start_date:
+            gy, gm, gd = self.instance.start_date.year, self.instance.start_date.month, self.instance.start_date.day
+            from .jalali import gregorian_to_jalali
+            jy, jm, jd = gregorian_to_jalali(gy, gm, gd)
+            self.initial["start_date"] = f"{jy:04d}/{jm:02d}/{jd:02d}"
+
     class Meta:
         model = LoanPlan
         fields = (
