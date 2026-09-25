@@ -7,6 +7,11 @@ from .jalali import jalali_to_gregorian
 
 
 class ManagerLoanPlanForm(forms.ModelForm):
+    start_date = forms.CharField(
+        label="تاریخ شروع (شمسی)",
+        required=True,
+        widget=forms.TextInput(attrs={"type": "text", "placeholder": "۱۴۰۵/۰۷/۰۳", "inputmode": "numeric", "class": "jalali-date-input"}),
+    )
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         if self.instance and self.instance.start_date:
@@ -22,14 +27,10 @@ class ManagerLoanPlanForm(forms.ModelForm):
             "service_fee", "duration_months", "capacity", "payment_destination",
             "status", "start_date",
         )
-        widgets = {
-            "description": forms.Textarea(attrs={"rows": 4}),
-            "start_date": forms.TextInput(attrs={"type": "text", "placeholder": "۱۴۰۵/۰۷/۰۳", "inputmode": "numeric", "class": "jalali-date-input"}),
-        }
+        widgets = {"description": forms.Textarea(attrs={"rows": 4})}
 
     def clean_start_date(self):
-        value = self.cleaned_data.get("start_date")
-        raw = self.data.get("start_date", "").strip().replace("-", "/")
+        raw = str(self.cleaned_data.get("start_date", "")).strip().replace("-", "/")
         if not raw:
             return value
         try:
