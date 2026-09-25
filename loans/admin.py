@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.utils.html import format_html
 from django.utils import timezone
 
-from .models import AuditLog, LoanPlan, LotteryDraw, LotteryStatus, Payment, PaymentDestination, PaymentStatus, PlanStatus, Reservation
+from .models import AuditLog, FundSettings, LoanPlan, LotteryDraw, LotteryStatus, Notification, Payment, PaymentDestination, PaymentStatus, PlanStatus, Reservation
 from .jalali import format_jalali
 from .services import log_action, run_lottery_draw, start_loan_plan
 
@@ -248,6 +248,39 @@ class AuditLogAdmin(admin.ModelAdmin):
 
     @admin.display(description="زمان", ordering="created_at")
     def jalali_created(self, obj): return format_jalali(obj.created_at)
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(FundSettings)
+class FundSettingsAdmin(admin.ModelAdmin):
+    fieldsets = (
+        ("اطلاعات عمومی", {"fields": ("fund_name", "support_phone", "support_text", "is_active")}),
+        ("متن‌های قابل نمایش به کاربران", {"fields": ("payment_instructions", "terms_text")}),
+        ("سیستم", {"fields": ("updated_at",)}),
+    )
+    readonly_fields = ("updated_at",)
+
+    def has_add_permission(self, request):
+        return not FundSettings.objects.exists()
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(Notification)
+class NotificationAdmin(admin.ModelAdmin):
+    list_display = ("user", "title", "kind", "is_read", "created_at")
+    list_filter = ("kind", "is_read")
+    search_fields = ("user__full_name", "user__phone_number", "title", "message")
+    readonly_fields = ("user", "title", "message", "kind", "payment", "lottery_draw", "created_at")
 
     def has_add_permission(self, request):
         return False
