@@ -34,6 +34,23 @@ class LotteryStatus(models.TextChoices):
     CANCELLED = "cancelled", "لغوشده"
 
 
+
+class Notification(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="notifications")
+    title = models.CharField("عنوان", max_length=160)
+    message = models.TextField("پیام")
+    is_read = models.BooleanField("خوانده شده", default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name = "اعلان"
+        verbose_name_plural = "اعلان‌ها"
+
+    def __str__(self):
+        return f"{self.user} — {self.title}"
+
+
 class PaymentDestination(models.Model):
     """حسابی که مدیر برای دریافت اقساط یک طرح معرفی می‌کند."""
     title = models.CharField("عنوان حساب", max_length=100)
