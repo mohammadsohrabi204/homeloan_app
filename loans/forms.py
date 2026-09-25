@@ -3,6 +3,7 @@ from django.contrib.auth import get_user_model
 from django.utils import timezone
 
 from .models import FundSettings, LoanPlan, LotteryDraw, PaymentDestination, PlanStatus
+from .jalali import jalali_to_gregorian
 
 
 class ManagerLoanPlanForm(forms.ModelForm):
@@ -15,8 +16,21 @@ class ManagerLoanPlanForm(forms.ModelForm):
         )
         widgets = {
             "description": forms.Textarea(attrs={"rows": 4}),
-            "start_date": forms.DateInput(attrs={"type": "date"}),
+            "start_date": forms.TextInput(attrs={"type": "text", "placeholder": "۱۴۰۵/۰۷/۰۳", "inputmode": "numeric", "class": "jalali-date-input"}),
         }
+
+    def clean_start_date(self):
+        value = self.cleaned_data.get("start_date")
+        raw = self.data.get("start_date", "").strip().replace("-", "/")
+        if not raw:
+            return value
+        try:
+            y, m, d = [int(x) for x in raw.split("/")]
+            gy, gm, gd = jalali_to_gregorian(y, m, d)
+            from datetime import date
+            return date(gy, gm, gd)
+        except (ValueError, TypeError):
+            raise forms.ValidationError("تاریخ را به صورت ۱۴۰۵/۰۷/۰۳ وارد کنید.")
 
     def clean(self):
         cleaned = super().clean()
