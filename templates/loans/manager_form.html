@@ -7,7 +7,13 @@ function w(v){v=String(v||"").replace(/[,٬\s]/g,"").replace(/[۰-۹]/g,d=>"۰۱
 document.querySelectorAll(".amount-words-live").forEach(b=>{let i=document.getElementById(b.dataset.amountInput);if(!i)return;let u=()=>b.textContent=w(i.value)?"مبلغ به حروف: "+w(i.value):"";i.addEventListener("input",u);u()});
 })();
 </script>
-{% endblock %}
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  const O=["صفر","یک","دو","سه","چهار","پنج","شش","هفت","هشت","نه","ده","یازده","دوازده","سیزده","چهارده","پانزده","شانزده","هفده","هجده","نوزده"],T=["","","بیست","سی","چهل","پنجاه","شصت","هفتاد","هشتاد","نود"],H=["","صد","دویست","سیصد","چهارصد","پانصد","ششصد","هفتصد","هشتصد","نهصد"],S=["","هزار","میلیون","میلیارد","تریلیون","کوادریلیون"];
+  function words(v){v=String(v||"").replace(/[,٬\s]/g,"").replace(/[۰-۹]/g,d=>"۰۱۲۳۴۵۶۷۸۹".indexOf(d));if(!v)return "";let n=Math.trunc(Number(v));if(!Number.isFinite(n))return "";if(n===0)return "صفر تومان";let p=[],s=0;while(n){let x=n%1000;if(x){let h=Math.floor(x/100),r=x%100,a=[];if(h)a.push(H[h]);if(r<20&&r)a.push(O[r]);else if(r){a.push(T[Math.floor(r/10)]);if(r%10)a.push(O[r%10]);}let z=a.join(" و ");if(s)z+=" "+S[s];p.unshift(z)}n=Math.floor(n/1000);s++}return p.join(" و ")+" تومان"}
+  document.querySelectorAll("input[name='total_amount'],input[name='monthly_payment'],input[name='service_fee']").forEach(function(input){let box=document.createElement("div");box.className="amount-words-live";input.insertAdjacentElement("afterend",box);function update(){box.textContent=input.value? "مبلغ به حروف: "+words(input.value):""}input.addEventListener("input",update);update()});
+});
+</script>{% endblock %}
 {% block content %}
 <div class="plan-header"><h1>{{ title }}</h1></div>
 <form method="post" class="manager-form">
