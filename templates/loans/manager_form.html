@@ -11,6 +11,11 @@
       {{ field }}
       {% if field.help_text %}<div class="help-text">{{ field.help_text }}</div>{% endif %}
       {{ field.errors }}
+      {% if field.name == "total_amount" %}<div class="help-text">مبلغ به حروف: {{ form.instance.total_amount_words|default:"پس از ذخیره نمایش داده می‌شود" }}</div>{% endif %}
+      {% if field.name == "monthly_payment" %}<div class="help-text">قسط به حروف: {{ form.instance.monthly_payment_words|default:"پس از ذخیره نمایش داده می‌شود" }}</div>{% endif %}
+      {% if field.name == "service_fee" %}<div class="help-text">هزینه خدمات به حروف: {{ form.instance.service_fee_words|default:"پس از ذخیره نمایش داده می‌شود" }}</div>{% endif %}
+      {% if field.name == "start_date" and form.instance.start_date %}<div class="help-text">تاریخ شمسی: {{ form.instance.jalali_start_date }}</div>{% endif %}
+      {% if field.name == "scheduled_at" and form.instance.scheduled_at %}<div class="help-text">زمان شمسی: {{ form.instance.jalali_scheduled_at }}</div>{% endif %}
     </div>
   {% endfor %}
   <div class="manager-actions">
