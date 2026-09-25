@@ -12,7 +12,7 @@
       <a href="{% url 'loans:dashboard' %}" class="brand">صندوق وام خانگی</a>
       <nav>
         {% if user.is_authenticated %}
-          {% if user.is_staff %}<a href="{% url 'admin:index' %}">پنل مدیریت</a>{% endif %}
+          {% if user.is_staff %}<a href="{% url 'loans:manager_dashboard' %}">پنل مدیریت</a>{% endif %}
           <a href="{% url 'loans:dashboard' %}">داشبورد</a>
           <a href="{% url 'accounts:account' %}">حساب من</a>
           <form method="post" action="{% url 'accounts:logout' %}" class="logout-form">
