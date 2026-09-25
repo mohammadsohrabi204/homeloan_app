@@ -9,11 +9,12 @@ from django.contrib.auth.decorators import user_passes_test
 from django.utils import timezone
 
 from .models import LoanPlan, Notification, Payment, PaymentStatus, PlanStatus, Reservation, ReservationStatus
-from .services import log_action
+from .services import log_action, notify_upcoming_and_overdue_payments
 
 
 @login_required
 def dashboard(request):
+    notify_upcoming_and_overdue_payments()
     open_plans = (
         LoanPlan.objects.filter(status__in=[PlanStatus.OPEN, PlanStatus.FULL])
         .order_by("-created_at")
