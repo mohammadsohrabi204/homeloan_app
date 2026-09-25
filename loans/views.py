@@ -4,6 +4,8 @@ from django.conf import settings
 from django.db import IntegrityError, transaction
 from django.db.models import Count, Q
 from django.shortcuts import get_object_or_404, redirect, render
+from django.contrib.auth.decorators import user_passes_test
+from django.utils import timezone
 
 from .models import LoanPlan, Payment, PaymentStatus, PlanStatus, Reservation, ReservationStatus
 from .services import log_action
@@ -56,6 +58,74 @@ def dashboard(request):
             "active_loan_count": my_reservations.count(),
             "unpaid_count": unpaid_count,
             "next_payment": next_payment,
+        },
+    )
+
+
+
+def staff_required(view_func):
+    return user_passes_test(lambda user: user.is_staff, login_url="accounts:login")(view_func)
+
+
+@staff_required
+def manager_dashboard(request):
+    now = timezone.now()
+    plans = LoanPlan.objects.annotate(
+        member_count=Count("reservations", filter=Q(reservations__status=ReservationStatus.CONFIRMED)),
+        paid_count=Count(
+            "reservations__payments",
+            filter=Q(
+                reservations__status=ReservationStatus.CONFIRMED,
+                reservations__payments__status=PaymentStatus.PAID,
+            ),
+        ),
+        pending_count=Count(
+            "reservations__payments",
+            filter=Q(
+                reservations__status=ReservationStatus.CONFIRMED,
+                reservations__payments__status=PaymentStatus.PENDING,
+            ),
+        ),
+        rejected_count=Count(
+            "reservations__payments",
+            filter=Q(
+                reservations__status=ReservationStatus.CONFIRMED,
+                reservations__payments__status=PaymentStatus.RECEIPT_REJECTED,
+            ),
+        ),
+    ).order_by("-created_at")
+
+    payments = (
+        Payment.objects.filter(reservation__status=ReservationStatus.CONFIRMED)
+        .select_related("reservation__user", "reservation__loan_plan")
+        .order_by("-receipt_submitted_at", "due_date", "round_number")
+    )
+    payment_rows = []
+    for payment in payments:
+        payment_rows.append({
+            "payment": payment,
+            "is_overdue": payment.status != PaymentStatus.PAID and payment.due_date < now,
+            "has_receipt": bool(payment.manual_receipt),
+        })
+
+    total_members = Reservation.objects.filter(status=ReservationStatus.CONFIRMED).values("user_id").distinct().count()
+    total_paid = Payment.objects.filter(status=PaymentStatus.PAID).count()
+    pending_receipts = Payment.objects.exclude(manual_receipt="").exclude(status=PaymentStatus.PAID).count()
+    overdue_count = Payment.objects.filter(
+        due_date__lt=now
+    ).exclude(status=PaymentStatus.PAID).count()
+
+    return render(
+        request,
+        "loans/manager_dashboard.html",
+        {
+            "plans": plans,
+            "payment_rows": payment_rows,
+            "total_members": total_members,
+            "total_paid": total_paid,
+            "pending_receipts": pending_receipts,
+            "overdue_count": overdue_count,
+            "now": now,
         },
     )
 
