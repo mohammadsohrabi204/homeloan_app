@@ -42,5 +42,60 @@
   <footer class="site-footer">
     <div class="container">© {% now "Y" %} صندوق وام خانگی</div>
   </footer>
+
+  <script>
+  (function () {
+    // تمام اعداد نمایشی سایت را به رقم فارسی تبدیل می‌کنیم.
+    // جداکنندهٔ هزارگان هم از "," به "٬" تبدیل می‌شود.
+    var digits = {
+      "0": "۰", "1": "۱", "2": "۲", "3": "۳", "4": "۴",
+      "5": "۵", "6": "۶", "7": "۷", "8": "۸", "9": "۹"
+    };
+
+    function toPersianDigits(text) {
+      return text.replace(/\d/g, function (digit) { return digits[digit]; })
+                 .replace(/(?<=\d),(?=\d)/g, "٬");
+    }
+
+    function convertTextNodes(root) {
+      var walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+      var nodes = [];
+      var node;
+      while ((node = walker.nextNode())) nodes.push(node);
+
+      nodes.forEach(function (textNode) {
+        if (textNode.parentElement &&
+            !["SCRIPT", "STYLE", "NOSCRIPT"].includes(textNode.parentElement.tagName)) {
+          var converted = toPersianDigits(textNode.nodeValue);
+          if (converted !== textNode.nodeValue) textNode.nodeValue = converted;
+        }
+      });
+    }
+
+    function convertPage() {
+      convertTextNodes(document.body);
+    }
+
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", convertPage);
+    } else {
+      convertPage();
+    }
+
+    // برای شمارش معکوس و محتوایی که بعداً با JavaScript تغییر می‌کند.
+    new MutationObserver(function (mutations) {
+      mutations.forEach(function (mutation) {
+        mutation.addedNodes.forEach(function (node) {
+          if (node.nodeType === Node.TEXT_NODE) {
+            var converted = toPersianDigits(node.nodeValue);
+            if (converted !== node.nodeValue) node.nodeValue = converted;
+          } else if (node.nodeType === Node.ELEMENT_NODE) {
+            convertTextNodes(node);
+          }
+        });
+      });
+    }).observe(document.body, { childList: true, subtree: true });
+  })();
+  </script>
 </body>
 </html>
