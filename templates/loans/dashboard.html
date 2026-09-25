@@ -2,7 +2,34 @@
 {% load humanize %}
 {% block title %}داشبورد{% endblock %}
 {% block content %}
-<h1>داشبورد</h1>
+
+<div class="plan-header">
+  <h1>داشبورد</h1>
+  <p class="muted">وضعیت وام‌ها و اقساط شما در یک نگاه</p>
+
+  <div class="plan-stats">
+    <div class="plan-stat">
+      <span class="value">{{ active_loan_count }}</span>
+      <span class="label">وام فعال</span>
+    </div>
+    <div class="plan-stat">
+      <span class="value">{{ unpaid_count }}</span>
+      <span class="label">قسط پرداخت‌نشده</span>
+    </div>
+    <div class="plan-stat">
+      <span class="value">
+        {% if next_payment %}{{ next_payment.amount|intcomma }}{% else %}—{% endif %}
+      </span>
+      <span class="label">قسط بعدی (تومان)</span>
+    </div>
+    <div class="plan-stat">
+      <span class="value">
+        {% if next_payment %}{{ next_payment.jalali_due_date }}{% else %}—{% endif %}
+      </span>
+      <span class="label">سررسید بعدی</span>
+    </div>
+  </div>
+</div>
 
 <section class="block">
   <h2>وام‌های من</h2>
@@ -13,8 +40,15 @@
           <div class="ledger-row-main">
             <div class="ledger-row-title">{{ r.loan_plan.title }}</div>
             <div class="ledger-row-meta">
-              {% if r.has_won %}<span class="badge badge-brass">برندهٔ دورهٔ {{ r.won_round }}</span>{% else %}عضو این طرح هستید{% endif %}
+              {% if r.has_won %}
+                <span class="badge badge-brass">برندهٔ دورهٔ {{ r.won_round }}</span>
+              {% else %}
+                عضو این طرح هستید
+              {% endif %}
               · {{ r.loan_plan.get_status_display }}
+              {% if r.total_installments %}
+                · {{ r.paid_installments }} از {{ r.total_installments }} قسط پرداخت شده
+              {% endif %}
             </div>
           </div>
           <div class="ledger-row-amount">
