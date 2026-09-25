@@ -10,7 +10,7 @@ from dateutil.relativedelta import relativedelta
 from django.db import transaction
 from django.utils import timezone
 
-from .models import AuditLog, LotteryStatus, PaymentStatus, ReservationStatus
+from .models import AuditLog, LotteryStatus, Notification, PaymentStatus, ReservationStatus
 
 
 def log_action(actor, action, details=None, ip_address=None):
@@ -134,6 +134,12 @@ def run_lottery_draw(draw, actor):
     winner.has_won = True
     winner.won_round = draw.round_number
     winner.save(update_fields=["has_won", "won_round"])
+
+    Notification.objects.get_or_create(user=winner.user, lottery_draw=draw, kind="lottery_winner", defaults={"title": "شما برنده شدید", "message": f"در قرعه‌کشی دورهٔ {draw.round_number} وام «{plan.title}» برنده شدید."})
+    for reservation in reservations:
+        if reservation.id == winner.id:
+            continue
+        Notification.objects.get_or_create(user=reservation.user, lottery_draw=draw, kind="lottery_result", defaults={"title": "اعلام نتیجه قرعه‌کشی", "message": f"قرعه‌کشی دورهٔ {draw.round_number} وام «{plan.title}» برگزار شد. برنده: {winner.user.full_name}."})
 
     log_action(
         actor,
