@@ -8,6 +8,7 @@ from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
+import mimetypes
 
 from loans.models import Payment, PaymentStatus
 from loans.services import log_action
@@ -89,7 +90,11 @@ def callback(request, payment_id):
         messages.error(request, "شناسهٔ بازگشتی درگاه با این قسط مطابقت ندارد.")
         return redirect("loans:plan_detail", plan_id=payment.reservation.loan_plan_id)
 
-    gateway = get_gateway()
+    # گیت‌ویِ تأیید باید همان گیت‌وی‌ای باشد که `pay()` برای همین قسط تنظیم کرده
+    # (فیلد `payment.gateway`). در حالت `both` اگر از get_gateway() بدون نام استفاده
+    # کنیم، callback همیشه با گیت‌وی دستی تأیید می‌شود و پرداخت‌های زرین‌پال
+    # همیشه «ناموفق» ثبت می‌شوند.
+    gateway = get_gateway(payment.gateway or None)
     try:
         # مبلغ از رکورد سرور خوانده می‌شود، نه از پارامتر ورودی — تا کاربر نتواند مبلغ را دستکاری کند.
         result = gateway.verify_payment(amount=payment.amount, authority=authority)
@@ -151,4 +156,7 @@ def view_manual_receipt(request, payment_id):
     payment = get_object_or_404(Payment, pk=payment_id)
     if not payment.manual_receipt:
         raise Http404
-    return FileResponse(payment.manual_receipt.open("rb"), content_type="image/*")
+    # "image/*" یک MIME wildcard نامعتبر است؛ نوع صحیح را از پسوند فایل بگیریم
+    # (تصاویر رسید فقط jpg/jpeg/png/webp مجازند).
+    content_type = mimetypes.guess_type(payment.manual_receipt.name)[0] or "application/octet-stream"
+    return FileResponse(payment.manual_receipt.open("rb"), content_type=content_type)

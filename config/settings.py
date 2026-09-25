@@ -4,11 +4,19 @@
 و هرگز نباید مستقیم در این فایل نوشته شوند.
 """
 import os
+import sys
 from pathlib import Path
 
 from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# آیا داریم `python manage.py test` اجرا می‌کنیم؟
+# جنگو تست‌ها را با DEBUG=False و روی http://testserver اجرا می‌کند؛ بنابراین
+# دو تنظیم امنیتی «حالت تولید» باید در تست غیرفعال شوند تا:
+#   ۱) ریدایرکت اجباری HTTPS (SECURE_SSL_REDIRECT) همهٔ درخواست‌های تست را 301 نکند
+#   ۲) استاتیک با مانیفست (که نیازمند collectstatic است) رندر قالب‌ها را خراب نکند
+TESTING = "test" in sys.argv
 
 # مقادیر فایل .env را به متغیرهای محیطی اضافه می‌کند.
 # override=False یعنی اگر متغیری از قبل در محیط سیستم تعریف شده باشد
@@ -133,7 +141,7 @@ MEDIA_ROOT = BASE_DIR / "media"
 # در حالت تولید، فایل‌های استاتیک فشرده و هش‌دار سرو می‌شوند (کش طولانی‌مدت مرورگر).
 # در حالت توسعه/تست از حالت ساده استفاده می‌شود، چون حالت هش‌دار پیش از اجرای
 # collectstatic خطا می‌دهد.
-if DEBUG:
+if DEBUG or TESTING:
     STORAGES = {
         "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
         "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
@@ -160,7 +168,8 @@ X_FRAME_OPTIONS = "DENY"
 SECURE_CONTENT_TYPE_NOSNIFF = True
 
 if not DEBUG:
-    SECURE_SSL_REDIRECT = env_bool("SECURE_SSL_REDIRECT", True)
+    # در محیط تست ریدایرکت HTTPS معنادار نیست و همهٔ تست‌ها را خراب می‌کند
+    SECURE_SSL_REDIRECT = (not TESTING) and env_bool("SECURE_SSL_REDIRECT", True)
     SECURE_HSTS_SECONDS = 31536000
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True

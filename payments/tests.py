@@ -77,6 +77,8 @@ class ManualReceiptTests(TestCase):
             self.client.force_login(self.admin)
             response = self.client.get(f"/payment/receipt/{self.payment.id}/view/")
             self.assertEqual(response.status_code, 200)
+            # نوع MIME باید واقعی باشد، نه wildcard نامعتبر "image/*"
+            self.assertEqual(response["Content-Type"], "image/png")
             response.close()
 
 # Create your tests here.
