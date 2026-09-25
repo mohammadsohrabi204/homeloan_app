@@ -13,6 +13,7 @@
       <nav>
         {% if user.is_authenticated %}
           {% if user.is_staff %}<a href="{% url 'loans:manager_dashboard' %}">پنل مدیریت</a>{% endif %}
+      <a href="{% url 'loans:notifications' %}">اعلان‌ها</a>
           <a href="{% url 'loans:dashboard' %}">داشبورد</a>
           <a href="{% url 'accounts:account' %}">حساب من</a>
           <form method="post" action="{% url 'accounts:logout' %}" class="logout-form">
