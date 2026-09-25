@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% block title %}پنل مدیریت صندوق{% endblock %}
+{% block content %}
+
+<div class="plan-header">
+  <h1>پنل مدیریت صندوق</h1>
+  <p class="muted">نمای کلی اعضا، اقساط، رسیدها، بدهی‌های سررسیدشده و طرح‌های وام</p>
+</div>
+
+<div class="manager-grid">
+  <div class="manager-stat"><span class="value">{{ plans|length }}</span><span class="label">طرح وام</span></div>
+  <div class="manager-stat"><span class="value">{{ total_members }}</span><span class="label">عضو فعال</span></div>
+  <div class="manager-stat"><span class="value">{{ total_paid }}</span><span class="label">قسط پرداخت‌شده</span></div>
+  <div class="manager-stat"><span class="value">{{ overdue_count }}</span><span class="label">قسط معوق</span></div>
+</div>
+
+<section class="manager-section">
+  <h2>طرح‌های وام</h2>
+  <div class="manager-table-wrap">
+    <table class="manager-table">
+      <thead><tr><th>طرح</th><th>وضعیت</th><th>اعضا</th><th>پرداخت‌شده</th><th>در انتظار</th><th>ردشده</th><th></th></tr></thead>
+      <tbody>
+      {% for plan in plans %}
+        <tr>
+          <td><strong>{{ plan.title }}</strong><br><span class="muted small">{{ plan.monthly_payment|intcomma }} تومان / ماه</span></td>
+          <td>{{ plan.get_status_display }}</td>
+          <td>{{ plan.member_count }} / {{ plan.capacity }}</td>
+          <td>{{ plan.paid_count }}</td>
+          <td>{{ plan.pending_count }}</td>
+          <td>{{ plan.rejected_count }}</td>
+          <td><a href="{% url 'loans:plan_detail' plan.id %}">جزئیات</a></td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="7">هنوز طرحی ایجاد نشده است.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="manager-section">
+  <h2>اقساط و وضعیت اعضا</h2>
+  <p class="muted small">رسیدهای ارسال‌شده از همین صفحه قابل شناسایی هستند؛ تأیید یا رد نهایی همچنان از مسیر امن مدیریت پرداخت انجام می‌شود.</p>
+  <div class="manager-table-wrap">
+    <table class="manager-table">
+      <thead><tr><th>عضو</th><th>طرح</th><th>دوره</th><th>مبلغ</th><th>سررسید</th><th>وضعیت</th><th>رسید</th></tr></thead>
+      <tbody>
+      {% for row in payment_rows %}
+        <tr class="{% if row.is_overdue %}overdue{% endif %}">
+          <td>{{ row.payment.reservation.user.full_name }}<br><span class="muted small">{{ row.payment.reservation.user.phone_number }}</span></td>
+          <td>{{ row.payment.reservation.loan_plan.title }}</td>
+          <td>{{ row.payment.round_number }}</td>
+          <td>{{ row.payment.amount|intcomma }}</td>
+          <td>{{ row.payment.jalali_due_date }}</td>
+          <td>
+            {% if row.payment.status == "paid" %}
+              <span class="badge badge-teal">پرداخت شده</span>
+            {% elif row.payment.status == "receipt_rejected" %}
+              <span class="badge badge-rust">رسید رد شده</span>
+            {% elif row.has_receipt %}
+              <span class="badge badge-brass">رسید در انتظار بررسی</span>
+            {% elif row.is_overdue %}
+              <span class="badge badge-rust">معوق</span>
+            {% else %}
+              <span class="badge badge-ink">در انتظار پرداخت</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if row.has_receipt %}
+              <a href="/payment/receipt/{{ row.payment.id }}/view/" target="_blank" rel="noopener">مشاهده رسید</a>
+            {% else %}—{% endif %}
+          </td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="7">هنوز قسطی برای طرح‌ها ساخته نشده است.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<div class="manager-actions">
+  <a class="btn" href="{% url 'admin:index' %}">مدیریت کامل و تأیید/رد پرداخت‌ها</a>
+  <a class="btn btn-secondary" href="{% url 'loans:dashboard' %}">بازگشت به داشبورد</a>
+</div>
+{% endblock %}
