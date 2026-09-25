@@ -4,7 +4,7 @@ from django.conf import settings
 from django.core.validators import FileExtensionValidator, MinValueValidator
 from django.db import models
 
-from .jalali import format_jalali
+from .jalali import amount_in_words, format_jalali
 
 
 class PlanStatus(models.TextChoices):
@@ -146,6 +146,18 @@ class LoanPlan(models.Model):
         return self.title
 
     @property
+    def total_amount_words(self):
+        return amount_in_words(self.total_amount)
+
+    @property
+    def monthly_payment_words(self):
+        return amount_in_words(self.monthly_payment)
+
+    @property
+    def service_fee_words(self):
+        return amount_in_words(self.service_fee)
+
+    @property
     def confirmed_count(self):
         return self.reservations.filter(status=ReservationStatus.CONFIRMED).count()
 
@@ -208,6 +220,10 @@ class Payment(models.Model):
 
     def __str__(self):
         return f"{self.reservation} - دورهٔ {self.round_number}"
+
+    @property
+    def amount_words(self):
+        return amount_in_words(self.amount)
 
     @property
     def jalali_due_date(self):
