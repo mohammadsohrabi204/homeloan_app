@@ -7,12 +7,12 @@
   <h1>{{ plan.title }}</h1>
   {% if plan.description %}<p class="muted">{{ plan.description }}</p>{% endif %}
   <div class="plan-stats">
-    <div class="plan-stat"><span class="value">{{ plan.total_amount|intcomma }}</span><span class="label">مبلغ وام (تومان)</span></div>
-    <div class="plan-stat"><span class="value">{{ plan.monthly_payment|intcomma }}</span><span class="label">قسط ماهانه (تومان)</span></div>
+    <div class="plan-stat"><span class="value">{{ plan.total_amount|intcomma }} تومان<br><span class="small muted">{{ plan.total_amount_words }}</span></span><span class="label">مبلغ وام (تومان)</span></div>
+    <div class="plan-stat"><span class="value">{{ plan.monthly_payment|intcomma }} تومان<br><span class="small muted">{{ plan.monthly_payment_words }}</span></span><span class="label">قسط ماهانه (تومان)</span></div>
     <div class="plan-stat"><span class="value">{{ plan.duration_months }}</span><span class="label">تعداد دوره (ماه)</span></div>
     <div class="plan-stat"><span class="value">{{ plan.confirmed_count }} / {{ plan.capacity }}</span><span class="label">تعداد اعضا</span></div>
   </div>
-  {% if plan.service_fee > 0 %}<p class="small muted">هزینهٔ خدمات صندوق: {{ plan.service_fee|intcomma }} تومان (این وام بدون سود/بهره است)</p>{% endif %}
+  {% if plan.service_fee > 0 %}<p class="small muted">هزینهٔ خدمات صندوق: {{ plan.service_fee|intcomma }} تومان<br><span class="small muted">{{ plan.service_fee_words }}</span> (این وام بدون سود/بهره است)</p>{% endif %}
   {% if plan.payment_destination %}
     <div class="payment-destination">
       <strong>حساب دریافت اقساط: {{ plan.payment_destination.account_holder }}</strong><br>
@@ -55,7 +55,7 @@
       <tr>
         <td>{{ p.round_number }}</td>
         <td>{{ p.jalali_due_date }}</td>
-        <td>{{ p.amount|intcomma }}</td>
+        <td>{{ p.amount|intcomma }} تومان<br><span class="small muted">{{ p.amount_words }}</span></td>
         <td>
           {% if p.status == 'paid' %}<span class="badge badge-teal">پرداخت‌شده</span>
           {% elif p.status == 'receipt_rejected' %}<span class="badge badge-rust">رسید رد شده</span>
