@@ -6,10 +6,13 @@ from django.db import IntegrityError, transaction
 from django.db.models import Count, Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.contrib.auth.decorators import user_passes_test
+from django.contrib.auth import get_user_model
 from django.utils import timezone
 
 from .models import LoanPlan, Notification, Payment, PaymentStatus, PlanStatus, Reservation, ReservationStatus
-from .services import log_action, notify_upcoming_and_overdue_payments
+from .services import log_action, notify_upcoming_and_overdue_payments, run_lottery_draw, start_loan_plan
+from .forms import ManagerLoanPlanForm, PaymentDestinationForm, ManagerLotteryDrawForm, FundSettingsForm, ManagerUserForm
+from .models import FundSettings, LotteryDraw, PaymentDestination
 
 
 @login_required
@@ -69,6 +72,101 @@ def staff_required(view_func):
     return user_passes_test(lambda user: user.is_staff, login_url="accounts:login")(view_func)
 
 
+
+@staff_required
+def manager_plan_create(request):
+    form = ManagerLoanPlanForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        plan = form.save(commit=False)
+        plan.created_by = request.user
+        plan.save()
+        log_action(request.user, "loan_plan_created", {"plan_id": plan.id, "title": plan.title}, request.META.get("REMOTE_ADDR"))
+        messages.success(request, "طرح وام با موفقیت ایجاد شد.")
+        return redirect("loans:manager_dashboard")
+    return render(request, "loans/manager_form.html", {"form": form, "title": "ایجاد طرح وام", "submit_label": "ایجاد طرح"})
+
+@staff_required
+def manager_plan_edit(request, plan_id):
+    plan = get_object_or_404(LoanPlan, pk=plan_id)
+    form = ManagerLoanPlanForm(request.POST or None, instance=plan)
+    if request.method == "POST" and form.is_valid():
+        form.save()
+        log_action(request.user, "loan_plan_updated", {"plan_id": plan.id}, request.META.get("REMOTE_ADDR"))
+        messages.success(request, "طرح وام به‌روزرسانی شد.")
+        return redirect("loans:manager_dashboard")
+    return render(request, "loans/manager_form.html", {"form": form, "title": "ویرایش طرح وام", "submit_label": "ذخیره تغییرات", "object": plan})
+
+@staff_required
+@require_POST
+def manager_plan_start(request, plan_id):
+    plan = get_object_or_404(LoanPlan, pk=plan_id)
+    try:
+        start_loan_plan(plan)
+        log_action(request.user, "loan_plan_started", {"plan_id": plan.id}, request.META.get("REMOTE_ADDR"))
+        messages.success(request, "طرح شروع شد و اقساط اعضا ساخته شد.")
+    except ValueError as exc:
+        messages.error(request, str(exc))
+    return redirect("loans:manager_dashboard")
+
+@staff_required
+def manager_destination_list(request):
+    destinations = PaymentDestination.objects.order_by("-is_active", "title")
+    return render(request, "loans/manager_destinations.html", {"destinations": destinations})
+
+@staff_required
+def manager_destination_create(request):
+    form = PaymentDestinationForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        form.save()
+        log_action(request.user, "payment_destination_created", {"title": form.instance.title}, request.META.get("REMOTE_ADDR"))
+        messages.success(request, "حساب دریافت اقساط ثبت شد.")
+        return redirect("loans:manager_destinations")
+    return render(request, "loans/manager_form.html", {"form": form, "title": "حساب دریافت اقساط", "submit_label": "ثبت حساب"})
+
+@staff_required
+def manager_draw_create(request):
+    form = ManagerLotteryDrawForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        draw = form.save(commit=False)
+        draw.created_by = request.user
+        draw.save()
+        log_action(request.user, "lottery_scheduled", {"draw_id": draw.id, "plan_id": draw.loan_plan_id, "round": draw.round_number}, request.META.get("REMOTE_ADDR"))
+        messages.success(request, "قرعه‌کشی زمان‌بندی شد.")
+        return redirect("loans:manager_dashboard")
+    return render(request, "loans/manager_form.html", {"form": form, "title": "زمان‌بندی قرعه‌کشی", "submit_label": "زمان‌بندی"})
+
+@staff_required
+@require_POST
+def manager_draw_run(request, draw_id):
+    draw = get_object_or_404(LotteryDraw, pk=draw_id)
+    try:
+        winner = run_lottery_draw(draw, request.user)
+        messages.success(request, f"قرعه‌کشی انجام شد؛ برنده: {winner.user.full_name}")
+    except ValueError as exc:
+        messages.error(request, str(exc))
+    return redirect("loans:manager_dashboard")
+
+@staff_required
+def manager_settings(request):
+    settings_obj = FundSettings.objects.first()
+    form = FundSettingsForm(request.POST or None, instance=settings_obj)
+    if request.method == "POST" and form.is_valid():
+        obj = form.save(commit=False)
+        obj.pk = 1
+        obj.save()
+        log_action(request.user, "fund_settings_updated", {"fund_name": obj.fund_name}, request.META.get("REMOTE_ADDR"))
+        messages.success(request, "تنظیمات صندوق ذخیره شد.")
+        return redirect("loans:manager_settings")
+    return render(request, "loans/manager_form.html", {"form": form, "title": "تنظیمات صندوق", "submit_label": "ذخیره تنظیمات"})
+
+@staff_required
+def manager_users(request):
+    User = get_user_model()
+    q = request.GET.get("q", "").strip()
+    users = User.objects.order_by("-date_joined")
+    if q:
+        users = users.filter(Q(full_name__icontains=q) | Q(phone_number__icontains=q) | Q(national_id__icontains=q))
+    return render(request, "loans/manager_users.html", {"users": users[:200], "q": q})
 @staff_required
 def manager_dashboard(request):
     now = timezone.now()
@@ -124,6 +222,7 @@ def manager_dashboard(request):
             "selected_plan": selected_plan,
             "status_filter": status_filter,
             "search": search,
+            "draws": LotteryDraw.objects.select_related("loan_plan", "winner_reservation__user").order_by("scheduled_at")[:30],
         },
     )
 
