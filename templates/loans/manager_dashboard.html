@@ -32,7 +32,7 @@
           <td><a href="{% url 'loans:plan_detail' plan.id %}">جزئیات</a></td>
         </tr>
       {% empty %}
-        <tr><td colspan="7">هنوز طرحی ایجاد نشده است.</td></tr>
+        <tr><td colspan="8">هنوز طرحی ایجاد نشده است.</td></tr>
       {% endfor %}
       </tbody>
     </table>
@@ -40,11 +40,31 @@
 </section>
 
 <section class="manager-section">
+  <h2>جستجو و فیلتر اقساط</h2>
+  <form method="get" class="manager-filters">
+    <input type="search" name="q" value="{{ search }}" placeholder="نام، نام خانوادگی یا شماره موبایل">
+    <select name="plan">
+      <option value="">همه وام‌ها</option>
+      {% for plan in plans %}
+        <option value="{{ plan.id }}" {% if selected_plan == plan.id|stringformat:"s" %}selected{% endif %}>{{ plan.title }}</option>
+      {% endfor %}
+    </select>
+    <select name="status">
+      <option value="">همه وضعیت‌ها</option>
+      <option value="receipts" {% if status_filter == "receipts" %}selected{% endif %}>رسیدهای جدید</option>
+      <option value="overdue" {% if status_filter == "overdue" %}selected{% endif %}>اقساط معوق</option>
+    </select>
+    <button class="btn" type="submit">اعمال فیلتر</button>
+    <a class="btn btn-secondary" href="{% url 'loans:manager_dashboard' %}">پاک کردن</a>
+  </form>
+</section>
+
+<section class="manager-section">
   <h2>اقساط و وضعیت اعضا</h2>
   <p class="muted small">رسیدهای ارسال‌شده از همین صفحه قابل شناسایی هستند؛ تأیید یا رد نهایی همچنان از مسیر امن مدیریت پرداخت انجام می‌شود.</p>
   <div class="manager-table-wrap">
     <table class="manager-table">
-      <thead><tr><th>عضو</th><th>طرح</th><th>دوره</th><th>مبلغ</th><th>سررسید</th><th>وضعیت</th><th>رسید</th></tr></thead>
+      <thead><tr><th>عضو</th><th>طرح</th><th>دوره</th><th>مبلغ</th><th>سررسید</th><th>وضعیت</th><th>رسید</th><th>عملیات</th></tr></thead>
       <tbody>
       {% for row in payment_rows %}
         <tr class="{% if row.is_overdue %}overdue{% endif %}">
@@ -69,6 +89,20 @@
           <td>
             {% if row.has_receipt %}
               <a href="/payment/receipt/{{ row.payment.id }}/view/" target="_blank" rel="noopener">مشاهده رسید</a>
+            {% else %}—{% endif %}
+          </td>
+          <td>
+            {% if row.payment.status != "paid" and row.has_receipt %}
+              <form method="post" action="{% url 'loans:manager_payment_action' row.payment.id %}" class="manager-actions">
+                {% csrf_token %}
+                <button class="btn btn-small" name="action" value="approve" type="submit">تأیید</button>
+              </form>
+              <form method="post" action="{% url 'loans:manager_payment_action' row.payment.id %}" class="manager-reject-form">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="reject">
+                <input name="reason" required maxlength="500" placeholder="دلیل رد رسید">
+                <button class="btn btn-danger btn-small" type="submit">رد</button>
+              </form>
             {% else %}—{% endif %}
           </td>
         </tr>
