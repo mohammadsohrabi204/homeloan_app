@@ -55,6 +55,36 @@ class Notification(models.Model):
         return f"{self.user} — {self.title}"
 
 
+class FundSettings(models.Model):
+    """تنظیمات عمومی قابل مدیریت از پنل؛ اطلاعات محرمانه در متغیرهای محیطی باقی می‌مانند."""
+    fund_name = models.CharField("نام صندوق", max_length=150, default="صندوق وام خانگی")
+    support_phone = models.CharField("شماره پشتیبانی", max_length=20, blank=True)
+    support_text = models.CharField("متن پشتیبانی", max_length=300, blank=True)
+    payment_instructions = models.TextField(
+        "راهنمای پرداخت",
+        blank=True,
+        help_text="متنی که به کاربران برای پرداخت اقساط نمایش داده می‌شود.",
+    )
+    terms_text = models.TextField(
+        "قوانین و شرایط",
+        blank=True,
+        help_text="قوانین عمومی عضویت و پرداخت صندوق.",
+    )
+    is_active = models.BooleanField("فعال", default=True)
+    updated_at = models.DateTimeField("آخرین بروزرسانی", auto_now=True)
+
+    class Meta:
+        verbose_name = "تنظیمات صندوق"
+        verbose_name_plural = "تنظیمات صندوق"
+
+    def save(self, *args, **kwargs):
+        self.pk = 1
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return self.fund_name
+
+
 class PaymentDestination(models.Model):
     """حسابی که مدیر برای دریافت اقساط یک طرح معرفی می‌کند."""
     title = models.CharField("عنوان حساب", max_length=100)
