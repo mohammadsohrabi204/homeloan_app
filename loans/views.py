@@ -10,6 +10,7 @@ from django.contrib.auth import get_user_model
 from django.utils import timezone
 
 from .models import LoanPlan, Notification, Payment, PaymentStatus, PlanStatus, Reservation, ReservationStatus
+from .jalali import amount_in_words, format_jalali
 from .services import log_action, notify_upcoming_and_overdue_payments, run_lottery_draw, start_loan_plan
 from .forms import ManagerLoanPlanForm, PaymentDestinationForm, ManagerLotteryDrawForm, FundSettingsForm, ManagerUserForm
 from .models import FundSettings, LotteryDraw, PaymentDestination
@@ -170,7 +171,12 @@ def manager_users(request):
 @staff_required
 def manager_dashboard(request):
     now = timezone.now()
-    plans = LoanPlan.objects.all().order_by("-created_at")
+    plans = list(LoanPlan.objects.all().order_by("-created_at"))
+    for plan in plans:
+        plan.manager_total_amount_words = amount_in_words(plan.total_amount)
+        plan.manager_monthly_payment_words = amount_in_words(plan.monthly_payment)
+        plan.manager_service_fee_words = amount_in_words(plan.service_fee)
+        plan.manager_jalali_start_date = format_jalali(plan.start_date)
     selected_plan = request.GET.get("plan", "").strip()
     status_filter = request.GET.get("status", "").strip()
     search = request.GET.get("q", "").strip()
