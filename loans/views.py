@@ -1,5 +1,6 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.views.decorators.http import require_POST
 from django.conf import settings
 from django.db import IntegrityError, transaction
 from django.db.models import Count, Q
@@ -70,50 +71,45 @@ def staff_required(view_func):
 @staff_required
 def manager_dashboard(request):
     now = timezone.now()
-    plans = LoanPlan.objects.annotate(
-        member_count=Count("reservations", filter=Q(reservations__status=ReservationStatus.CONFIRMED)),
-        paid_count=Count(
-            "reservations__payments",
-            filter=Q(
-                reservations__status=ReservationStatus.CONFIRMED,
-                reservations__payments__status=PaymentStatus.PAID,
-            ),
-        ),
-        pending_count=Count(
-            "reservations__payments",
-            filter=Q(
-                reservations__status=ReservationStatus.CONFIRMED,
-                reservations__payments__status=PaymentStatus.PENDING,
-            ),
-        ),
-        rejected_count=Count(
-            "reservations__payments",
-            filter=Q(
-                reservations__status=ReservationStatus.CONFIRMED,
-                reservations__payments__status=PaymentStatus.RECEIPT_REJECTED,
-            ),
-        ),
-    ).order_by("-created_at")
+    plans = LoanPlan.objects.all().order_by("-created_at")
+    selected_plan = request.GET.get("plan", "").strip()
+    status_filter = request.GET.get("status", "").strip()
+    search = request.GET.get("q", "").strip()
 
-    payments = (
-        Payment.objects.filter(reservation__status=ReservationStatus.CONFIRMED)
-        .select_related("reservation__user", "reservation__loan_plan")
-        .order_by("-receipt_submitted_at", "due_date", "round_number")
-    )
+    payments_qs = Payment.objects.filter(
+        reservation__status=ReservationStatus.CONFIRMED
+    ).select_related("reservation__user", "reservation__loan_plan")
+
+    if selected_plan.isdigit():
+        payments_qs = payments_qs.filter(reservation__loan_plan_id=int(selected_plan))
+    if search:
+        payments_qs = payments_qs.filter(
+            Q(reservation__user__first_name__icontains=search)
+            | Q(reservation__user__last_name__icontains=search)
+            | Q(reservation__user__phone_number__icontains=search)
+        )
+
+    payments = payments_qs.order_by("-receipt_submitted_at", "due_date", "round_number")
     payment_rows = []
     for payment in payments:
+        is_overdue = payment.status != PaymentStatus.PAID and payment.due_date < now
+        has_receipt = bool(payment.manual_receipt)
+        is_new_receipt = has_receipt and payment.status != PaymentStatus.PAID
+        if status_filter == "overdue" and not is_overdue:
+            continue
+        if status_filter == "receipts" and not is_new_receipt:
+            continue
         payment_rows.append({
             "payment": payment,
-            "is_overdue": payment.status != PaymentStatus.PAID and payment.due_date < now,
-            "has_receipt": bool(payment.manual_receipt),
+            "is_overdue": is_overdue,
+            "has_receipt": has_receipt,
+            "is_new_receipt": is_new_receipt,
         })
 
     total_members = Reservation.objects.filter(status=ReservationStatus.CONFIRMED).values("user_id").distinct().count()
     total_paid = Payment.objects.filter(status=PaymentStatus.PAID).count()
     pending_receipts = Payment.objects.exclude(manual_receipt="").exclude(status=PaymentStatus.PAID).count()
-    overdue_count = Payment.objects.filter(
-        due_date__lt=now
-    ).exclude(status=PaymentStatus.PAID).count()
+    overdue_count = Payment.objects.filter(due_date__lt=now).exclude(status=PaymentStatus.PAID).count()
 
     return render(
         request,
@@ -125,10 +121,11 @@ def manager_dashboard(request):
             "total_paid": total_paid,
             "pending_receipts": pending_receipts,
             "overdue_count": overdue_count,
-            "now": now,
+            "selected_plan": selected_plan,
+            "status_filter": status_filter,
+            "search": search,
         },
     )
-
 
 
 @staff_required
