@@ -6,7 +6,8 @@ function g(n){let p=[],h=Math.floor(n/100),r=n%100;if(h)p.push(H[h]);if(r){if(r<
 function w(v){v=String(v||"").replace(/[,٬\s]/g,"").replace(/[۰-۹]/g,d=>"۰۱۲۳۴۵۶۷۸۹".indexOf(d));if(!v)return "";let n=Math.trunc(Number(v));if(!Number.isFinite(n))return "";if(n===0)return "صفر تومان";let p=[],s=0;while(n){let x=n%1000;if(x){let z=g(x);if(s)z+=" "+S[s];p.unshift(z)}n=Math.floor(n/1000);s++}return p.join(" و ")+" تومان"}
 document.querySelectorAll(".amount-words-live").forEach(b=>{let i=document.getElementById(b.dataset.amountInput);if(!i)return;let u=()=>b.textContent=w(i.value)?"مبلغ به حروف: "+w(i.value):"";i.addEventListener("input",u);u()});
 })();
-</script>{% endblock %}
+</script>
+{% endblock %}
 {% block content %}
 <div class="plan-header"><h1>{{ title }}</h1></div>
 <form method="post" class="manager-form">
