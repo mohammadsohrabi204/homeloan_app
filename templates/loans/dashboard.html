@@ -18,7 +18,7 @@
     </div>
     <div class="plan-stat">
       <span class="value">
-        {% if next_payment %}{{ next_payment.amount|intcomma }}{% else %}—{% endif %}
+        {% if next_payment %}{{ next_payment.amount|intcomma }} تومان<br><span class="small muted">{{ next_payment.amount_words }}</span>{% else %}—{% endif %}
       </span>
       <span class="label">قسط بعدی (تومان)</span>
     </div>
@@ -52,7 +52,7 @@
             </div>
           </div>
           <div class="ledger-row-amount">
-            <span class="amount">{{ r.loan_plan.monthly_payment|intcomma }}</span>
+            <span class="amount">{{ r.loan_plan.monthly_payment|intcomma }} تومان<br><span class="small muted">{{ r.loan_plan.monthly_payment_words }}</span></span>
             <span class="amount-label">قسط ماهانه (تومان)</span>
           </div>
         </a>
@@ -81,7 +81,7 @@
             </div>
           </div>
           <div class="ledger-row-amount">
-            <span class="amount">{{ plan.total_amount|intcomma }}</span>
+            <span class="amount">{{ plan.total_amount|intcomma }} تومان<br><span class="small muted">{{ plan.total_amount_words }}</span></span>
             <span class="amount-label">مبلغ وام (تومان)</span>
           </div>
         </a>
