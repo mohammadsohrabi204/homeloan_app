@@ -288,3 +288,54 @@ section.block { margin-bottom: 36px; }
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; }
 }
+
+
+/* ---------- پنل مدیریت داخلی ---------- */
+.manager-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin: 18px 0 32px;
+}
+.manager-stat {
+  border: 1px solid var(--hairline);
+  background: var(--paper-50);
+  padding: 16px;
+}
+.manager-stat .value { display: block; font-size: 1.45rem; font-weight: 800; }
+.manager-stat .label { display: block; color: var(--ink-500); font-size: .82rem; margin-top: 3px; }
+
+.manager-table-wrap {
+  overflow-x: auto;
+  border-top: 1px solid var(--hairline);
+  border-bottom: 1px solid var(--hairline);
+}
+.manager-table {
+  width: 100%;
+  min-width: 760px;
+  border-collapse: collapse;
+  font-size: .86rem;
+}
+.manager-table th, .manager-table td {
+  padding: 11px 9px;
+  border-bottom: 1px solid var(--hairline);
+  text-align: start;
+  vertical-align: middle;
+}
+.manager-table th {
+  color: var(--ink-500);
+  font-weight: 700;
+  font-size: .78rem;
+  white-space: nowrap;
+}
+.manager-table tr.overdue { background: var(--rust-100); }
+.manager-table tr:last-child td { border-bottom: 0; }
+.manager-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.manager-section { margin-bottom: 40px; }
+
+@media (max-width: 760px) {
+  .manager-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 420px) {
+  .manager-grid { grid-template-columns: 1fr; }
+}
