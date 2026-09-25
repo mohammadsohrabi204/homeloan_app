@@ -85,15 +85,14 @@ def manager_dashboard(request):
         payments_qs = payments_qs.filter(reservation__loan_plan_id=int(selected_plan))
     if search:
         payments_qs = payments_qs.filter(
-            Q(reservation__user__first_name__icontains=search)
-            | Q(reservation__user__last_name__icontains=search)
+            Q(reservation__user__full_name__icontains=search)
             | Q(reservation__user__phone_number__icontains=search)
         )
 
     payments = payments_qs.order_by("-receipt_submitted_at", "due_date", "round_number")
     payment_rows = []
     for payment in payments:
-        is_overdue = payment.status != PaymentStatus.PAID and payment.due_date < now
+        is_overdue = payment.status != PaymentStatus.PAID and payment.due_date and payment.due_date < timezone.localdate()
         has_receipt = bool(payment.manual_receipt)
         is_new_receipt = has_receipt and payment.status != PaymentStatus.PAID
         if status_filter == "overdue" and not is_overdue:
@@ -110,7 +109,7 @@ def manager_dashboard(request):
     total_members = Reservation.objects.filter(status=ReservationStatus.CONFIRMED).values("user_id").distinct().count()
     total_paid = Payment.objects.filter(status=PaymentStatus.PAID).count()
     pending_receipts = Payment.objects.exclude(manual_receipt="").exclude(status=PaymentStatus.PAID).count()
-    overdue_count = Payment.objects.filter(due_date__lt=now).exclude(status=PaymentStatus.PAID).count()
+    overdue_count = Payment.objects.filter(due_date__lt=timezone.localdate()).exclude(status=PaymentStatus.PAID).count()
 
     return render(
         request,
