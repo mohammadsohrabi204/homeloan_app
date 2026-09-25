@@ -2,9 +2,10 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.conf import settings
 from django.db import IntegrityError, transaction
+from django.db.models import Count, Q
 from django.shortcuts import get_object_or_404, redirect, render
 
-from .models import LoanPlan, PlanStatus, Reservation, ReservationStatus
+from .models import LoanPlan, Payment, PaymentStatus, PlanStatus, Reservation, ReservationStatus
 from .services import log_action
 
 
@@ -17,11 +18,45 @@ def dashboard(request):
     my_reservations = (
         request.user.reservations.filter(status=ReservationStatus.CONFIRMED)
         .select_related("loan_plan")
+        .annotate(
+            total_installments=Count("payments"),
+            paid_installments=Count(
+                "payments",
+                filter=Q(payments__status=PaymentStatus.PAID),
+            ),
+        )
         .order_by("-reserved_at")
     )
+
+    next_payment = (
+        Payment.objects.filter(
+            reservation__user=request.user,
+            reservation__status=ReservationStatus.CONFIRMED,
+        )
+        .exclude(status=PaymentStatus.PAID)
+        .select_related("reservation__loan_plan")
+        .order_by("due_date", "round_number")
+        .first()
+    )
+    unpaid_count = (
+        Payment.objects.filter(
+            reservation__user=request.user,
+            reservation__status=ReservationStatus.CONFIRMED,
+        )
+        .exclude(status=PaymentStatus.PAID)
+        .count()
+    )
+
     return render(
-        request, "loans/dashboard.html",
-        {"open_plans": open_plans, "my_reservations": my_reservations},
+        request,
+        "loans/dashboard.html",
+        {
+            "open_plans": open_plans,
+            "my_reservations": my_reservations,
+            "active_loan_count": my_reservations.count(),
+            "unpaid_count": unpaid_count,
+            "next_payment": next_payment,
+        },
     )
 
 
