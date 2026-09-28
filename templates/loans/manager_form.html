@@ -151,6 +151,8 @@
     };
     const open=()=>{picker.hidden=false;render();};
     toggle.onclick=()=>picker.hidden=!picker.hidden;
+    dateInput.addEventListener("focus", open);
+    dateInput.addEventListener("click", open);
     document.addEventListener("click",e=>{if(!pickerWrap.contains(e.target))picker.hidden=true;});
     picker.querySelectorAll(".jalali-nav").forEach(b=>b.onclick=()=>{let m=view[1]+(+b.dataset.dir),y=view[0];if(m<1){m=12;y--;}if(m>12){m=1;y++;}view=[y,m];current=[y,m,Math.min(current[2],daysInMonth(y,m))];render();});
     [yearSelect,monthSelect,daySelect].forEach(s=>s.addEventListener("change",sync));
