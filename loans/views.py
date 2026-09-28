@@ -241,17 +241,21 @@ def manager_dashboard(request):
 @staff_required
 @require_POST
 def manager_payment_action(request, payment_id):
-    payment = get_object_or_404(
-        Payment.objects.select_related("reservation__loan_plan", "reservation__user"),
-        pk=payment_id,
-    )
-    action = request.POST.get("action")
-    if payment.status == PaymentStatus.PAID:
+    with transaction.atomic():
+        payment = get_object_or_404(
+            Payment.objects.select_related("reservation__loan_plan", "reservation__user").select_for_update(),
+            pk=payment_id,
+        )
+        action = request.POST.get("action")
+        if payment.status == PaymentStatus.PAID:
         messages.info(request, "این قسط قبلاً تأیید شده است.")
         return redirect("loans:manager_dashboard")
 
-    if action == "approve":
-        payment.status = PaymentStatus.PAID
+        if action == "approve":
+            if not payment.manual_receipt:
+                messages.error(request, "برای تأیید دستی باید رسید پرداخت ثبت شده باشد.")
+                return redirect("loans:manager_dashboard")
+            payment.status = PaymentStatus.PAID
         payment.paid_at = timezone.now()
         payment.confirmed_by = request.user
         payment.receipt_rejection_reason = ""
@@ -259,7 +263,7 @@ def manager_payment_action(request, payment_id):
         Notification.objects.get_or_create(user=payment.reservation.user, payment=payment, kind="payment_approved", defaults={"title":"تأیید پرداخت","message":f"پرداخت قسط دورهٔ {payment.round_number} وام «{payment.reservation.loan_plan.title}» تأیید شد."})
         log_action(request.user, "manual_payment_approved", {"payment_id": payment.id}, request.META.get("REMOTE_ADDR"))
         messages.success(request, "پرداخت با موفقیت تأیید شد.")
-    elif action == "reject":
+        elif action == "reject":
         reason = request.POST.get("reason", "").strip()
         if not reason:
             messages.error(request, "برای رد رسید باید دلیل وارد شود.")
@@ -276,16 +280,18 @@ def manager_payment_action(request, payment_id):
             request.META.get("REMOTE_ADDR"),
         )
         messages.success(request, "رسید رد شد و دلیل آن ثبت گردید.")
-    else:
-        messages.error(request, "عملیات نامعتبر است.")
-    return redirect("loans:manager_dashboard")
+        else:
+            messages.error(request, "عملیات نامعتبر است.")
+        return redirect("loans:manager_dashboard")
 
 
 
 @login_required
 def notifications(request):
-    items = request.user.notifications.all()[:50]
-    request.user.notifications.filter(is_read=False).update(is_read=True)
+    items = list(request.user.notifications.all()[:50])
+    unread_ids = [item.id for item in items if not item.is_read]
+    if unread_ids:
+        request.user.notifications.filter(id__in=unread_ids).update(is_read=True)
     return render(request, "loans/notifications.html", {"notifications": items})
 
 
