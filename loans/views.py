@@ -18,7 +18,6 @@ from .models import FundSettings, LotteryDraw, PaymentDestination
 
 @login_required
 def dashboard(request):
-    notify_upcoming_and_overdue_payments()
     open_plans = (
         LoanPlan.objects.filter(status__in=[PlanStatus.OPEN, PlanStatus.FULL])
         .order_by("-created_at")
