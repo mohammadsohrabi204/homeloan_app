@@ -70,7 +70,10 @@ def dashboard(request):
 
 
 def staff_required(view_func):
-    return user_passes_test(lambda user: user.is_staff, login_url="accounts:login")(view_func)
+    return user_passes_test(
+        lambda user: user.is_authenticated and user.is_active and user.is_staff,
+        login_url="accounts:login",
+    )(view_func)
 
 
 
@@ -89,6 +92,9 @@ def manager_plan_create(request):
 @staff_required
 def manager_plan_edit(request, plan_id):
     plan = get_object_or_404(LoanPlan, pk=plan_id)
+    if plan.status in (PlanStatus.IN_PROGRESS, PlanStatus.COMPLETED, PlanStatus.CANCELLED):
+        messages.error(request, "طرحی که اجرا شده، پایان یافته یا لغو شده است قابل ویرایش نیست.")
+        return redirect("loans:manager_dashboard")
     form = ManagerLoanPlanForm(request.POST or None, instance=plan)
     if request.method == "POST" and form.is_valid():
         form.save()
@@ -260,13 +266,14 @@ def manager_payment_action(request, payment_id):
             messages.error(request, "برای رد رسید باید دلیل وارد شود.")
             return redirect("loans:manager_dashboard")
         payment.status = PaymentStatus.RECEIPT_REJECTED
-        payment.receipt_rejection_reason = reason[:500]
+        reason = reason[:250]
+        payment.receipt_rejection_reason = reason
         payment.save(update_fields=["status", "receipt_rejection_reason"])
         Notification.objects.get_or_create(user=payment.reservation.user, payment=payment, kind="payment_rejected", defaults={"title":"رد رسید پرداخت","message":f"رسید قسط دورهٔ {payment.round_number} وام «{payment.reservation.loan_plan.title}» رد شد. دلیل: {reason[:500]}"})
         log_action(
             request.user,
             "manual_receipt_rejected",
-            {"payment_id": payment.id, "reason": reason[:500]},
+            {"payment_id": payment.id, "reason": reason},
             request.META.get("REMOTE_ADDR"),
         )
         messages.success(request, "رسید رد شد و دلیل آن ثبت گردید.")
