@@ -1,6 +1,7 @@
 from django.contrib import admin
 from django.utils.html import format_html
 from django.utils import timezone
+from django import forms
 
 from .models import AuditLog, FundSettings, LoanPlan, LotteryDraw, LotteryStatus, Notification, Payment, PaymentDestination, PaymentStatus, PlanStatus, Reservation
 from .jalali import format_jalali
@@ -44,6 +45,39 @@ class PaymentDestinationAdmin(admin.ModelAdmin):
 
 
 @admin.register(LoanPlan)
+class LoanPlanManagerForm(forms.ModelForm):
+    start_date = forms.CharField(label="تاریخ شروع (شمسی)", widget=forms.TextInput(attrs={
+        "type": "text", "placeholder": "۱۴۰۵/۰۷/۰۳", "inputmode": "numeric", "class": "jalali-date-input"
+    }))
+    total_amount = forms.DecimalField(label="مبلغ وام", widget=forms.NumberInput(attrs={"class": "amount-input"}))
+    monthly_payment = forms.DecimalField(label="قسط ماهانه", widget=forms.NumberInput(attrs={"class": "amount-input"}))
+    service_fee = forms.DecimalField(label="هزینه خدمات", widget=forms.NumberInput(attrs={"class": "amount-input"}))
+
+    class Meta:
+        model = LoanPlan
+        fields = "__all__"
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance and self.instance.start_date:
+            from .jalali import gregorian_to_jalali
+            y,m,d = gregorian_to_jalali(self.instance.start_date.year, self.instance.start_date.month, self.instance.start_date.day)
+            self.initial["start_date"] = f"{y:04d}/{m:02d}/{d:02d}"
+
+    def clean_start_date(self):
+        from .jalali import jalali_to_gregorian
+        raw = str(self.cleaned_data["start_date"]).strip().replace("-", "/")
+        try:
+            y,m,d = [int(x) for x in raw.split("/")]
+            gy,gm,gd = jalali_to_gregorian(y,m,d)
+            from datetime import date
+            return date(gy,gm,gd)
+        except (ValueError,TypeError):
+            raise forms.ValidationError("تاریخ را به صورت ۱۴۰۵/۰۷/۰۳ وارد کنید.")
+
+    class Media:
+        js = ("js/manager_amount_words.js",)
+
 class LoanPlanAdmin(admin.ModelAdmin):
     """
     فقط مدیر (is_staff=True) به این بخش دسترسی دارد — یعنی فقط مدیر می‌تواند
@@ -81,6 +115,8 @@ class LoanPlanAdmin(admin.ModelAdmin):
             )
         return self.readonly_fields
 
+    form = LoanPlanManagerForm
+
     def get_form(self, request, obj=None, **kwargs):
         from django import forms
         from .jalali import gregorian_to_jalali, jalali_to_gregorian
@@ -109,7 +145,6 @@ class LoanPlanAdmin(admin.ModelAdmin):
                     return date(gy,gm,gd)
                 except (ValueError,TypeError):
                     raise forms.ValidationError("تاریخ را به صورت ۱۴۰۵/۰۷/۰۳ وارد کنید.")
-        kwargs["form"] = JalaliDateForm
         return super().get_form(request, obj, **kwargs)
 
 
