@@ -51,6 +51,21 @@ class ManagerLoanPlanForm(forms.ModelForm):
             "description": forms.Textarea(attrs={"rows": 4}),
         }
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["status"].choices = [("draft", "پیش‌نویس (هنوز نمایش داده نمی‌شود)"), ("open", "باز برای رزرو")]
+        if self.instance and self.instance.status in ("draft", "open"):
+            self.initial["status"] = self.instance.status
+        elif self.instance and self.instance.status:
+            self.fields["status"].disabled = True
+
+        if self.instance and self.instance.start_date:
+            gy = self.instance.start_date.year
+            gm = self.instance.start_date.month
+            gd = self.instance.start_date.day
+            jy, jm, jd = gregorian_to_jalali(gy, gm, gd)
+            self.initial["start_date"] = f"{jy:04d}/{jm:02d}/{jd:02d}"
+
     def clean_start_date(self):
         raw = str(self.cleaned_data.get("start_date", "")).strip().replace("-", "/")
         if not raw:
