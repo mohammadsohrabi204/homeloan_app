@@ -54,12 +54,12 @@ class LoanPlanAdmin(admin.ModelAdmin):
     list_display = ("title", "total_amount_display", "monthly_payment_display", "service_fee_display", "duration_months", "capacity_display", "status", "created_at")
     list_filter = ("status",)
     search_fields = ("title",)
-    readonly_fields = ("created_by", "created_at", "jalali_start_date")
+    readonly_fields = ("created_by", "created_at")
     inlines = [ReservationInline]
     actions = ["action_start_plan"]
     fields = (
-        "title", "description", "total_amount", "monthly_payment", "service_fee", "jalali_start_date",
-        "duration_months", "capacity", "payment_destination", "status", "start_date", "created_by", "created_at",
+        "title", "description", "total_amount", "monthly_payment", "service_fee", "start_date",
+        "duration_months", "capacity", "payment_destination", "status", "created_by", "created_at",
     )
 
     def save_model(self, request, obj, form, change):
@@ -81,9 +81,37 @@ class LoanPlanAdmin(admin.ModelAdmin):
             )
         return self.readonly_fields
 
-    @admin.display(description="تاریخ شروع شمسی")
-    def jalali_start_date(self, obj):
-        return format_jalali(obj.start_date)
+    def get_form(self, request, obj=None, **kwargs):
+        from django import forms
+        from .jalali import gregorian_to_jalali, jalali_to_gregorian
+        class JalaliDateForm(forms.ModelForm):
+            start_date = forms.CharField(
+                label="تاریخ شروع (شمسی)",
+                widget=forms.TextInput(attrs={
+                    "type": "text", "placeholder": "۱۴۰۵/۰۷/۰۳",
+                    "inputmode": "numeric", "class": "jalali-date-input",
+                }),
+            )
+            class Meta:
+                model = LoanPlan
+                fields = "__all__"
+            def __init__(self, *args, **kwargs):
+                super().__init__(*args, **kwargs)
+                if self.instance and self.instance.start_date:
+                    y,m,d = gregorian_to_jalali(self.instance.start_date.year, self.instance.start_date.month, self.instance.start_date.day)
+                    self.initial["start_date"] = f"{y:04d}/{m:02d}/{d:02d}"
+            def clean_start_date(self):
+                raw = str(self.cleaned_data["start_date"]).strip().replace("-", "/")
+                try:
+                    y,m,d = [int(x) for x in raw.split("/")]
+                    gy,gm,gd = jalali_to_gregorian(y,m,d)
+                    from datetime import date
+                    return date(gy,gm,gd)
+                except (ValueError,TypeError):
+                    raise forms.ValidationError("تاریخ را به صورت ۱۴۰۵/۰۷/۰۳ وارد کنید.")
+        kwargs["form"] = JalaliDateForm
+        return super().get_form(request, obj, **kwargs)
+
 
     @admin.display(description="مبلغ وام")
     def total_amount_display(self, obj):
