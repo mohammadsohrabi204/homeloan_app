@@ -35,7 +35,7 @@ services:
     env_file:
       - .env
     environment:
-      DATABASE_URL: postgres://homeloan:${POSTGRES_PASSWORD:-change-this-password}@db:5432/homeloan
+      DATABASE_URL: postgres://homeloan:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}@db:5432/homeloan
       CELERY_BROKER_URL: redis://redis:6379/0
     command: celery -A config worker -l INFO
     volumes:
