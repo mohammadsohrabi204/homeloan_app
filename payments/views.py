@@ -1,5 +1,6 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.db import transaction
 from django.contrib.admin.views.decorators import staff_member_required
 from django.conf import settings
 from django.core.exceptions import PermissionDenied
@@ -19,7 +20,10 @@ from .forms import ManualReceiptForm
 @login_required
 @require_POST
 def pay(request, payment_id):
-    payment = get_object_or_404(Payment, pk=payment_id)
+    payment = get_object_or_404(
+        Payment.objects.select_related("reservation__loan_plan").select_for_update(),
+        pk=payment_id,
+    )
     if payment.reservation.user_id != request.user.id:
         raise PermissionDenied
 
@@ -30,9 +34,9 @@ def pay(request, payment_id):
     configured_gateway = settings.PAYMENT_GATEWAY
     selected_method = request.POST.get("payment_method")
     if configured_gateway == "both":
-        if selected_method != "zarinpal":
+        if selected_method not in ("manual", "zarinpal"):
             raise PermissionDenied
-        gateway = get_gateway("zarinpal")
+        gateway = get_gateway(selected_method)
     elif configured_gateway == "zarinpal":
         gateway = get_gateway("zarinpal")
     else:
