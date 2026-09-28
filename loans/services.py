@@ -9,7 +9,6 @@ import secrets
 from dateutil.relativedelta import relativedelta
 from django.db import transaction
 from django.utils import timezone
-from django.utils import timezone
 
 from .models import AuditLog, LotteryStatus, Notification, PaymentStatus, ReservationStatus
 
