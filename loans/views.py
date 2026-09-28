@@ -91,7 +91,7 @@ def manager_plan_create(request):
 @staff_required
 def manager_plan_edit(request, plan_id):
     plan = get_object_or_404(LoanPlan, pk=plan_id)
-    if plan.status in (PlanStatus.IN_PROGRESS, PlanStatus.COMPLETED, PlanStatus.CANCELLED):
+    if plan.status in (PlanStatus.FULL, PlanStatus.IN_PROGRESS, PlanStatus.COMPLETED, PlanStatus.CANCELLED):
         messages.error(request, "طرحی که اجرا شده، پایان یافته یا لغو شده است قابل ویرایش نیست.")
         return redirect("loans:manager_dashboard")
     form = ManagerLoanPlanForm(request.POST or None, instance=plan)
