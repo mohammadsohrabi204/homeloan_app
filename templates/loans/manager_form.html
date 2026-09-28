@@ -97,7 +97,7 @@
     const daysBox = picker.querySelector(".jalali-days");
     const title = picker.querySelector(".jalali-title");
     const monthNames = ["فروردین","اردیبهشت","خرداد","تیر","مرداد","شهریور","مهر","آبان","آذر","دی","بهمن","اسفند"];
-    const fa = n => String(n).replace(/\\d/g, d => "۰۱۲۳۴۵۶۷۸۹"[d]);
+    const fa = n => String(n).replace(/[0-9]/g, d => "۰۱۲۳۴۵۶۷۸۹"[Number(d)]);
     const en = s => String(s || "").replace(/[۰-۹]/g, d => "۰۱۲۳۴۵۶۷۸۹".indexOf(d)).replace(/[٠-٩]/g, d => "٠١٢٣٤٥٦٧٨٩".indexOf(d));
     const now = new Date();
     const g2j = (gy, gm, gd) => {
@@ -150,7 +150,7 @@
       for(let d=1;d<=daysInMonth(y,m);d++){const b=document.createElement("button");b.type="button";b.textContent=fa(d);if(y===current[0]&&m===current[1]&&d===current[2])b.className="selected";b.onclick=()=>{current=[y,m,d];sync();};daysBox.appendChild(b);}
     };
     const open=()=>{picker.hidden=false;render();};
-    toggle.onclick=()=>picker.hidden=!picker.hidden;
+    toggle.onclick=()=>{picker.hidden=false;render();};
     dateInput.addEventListener("focus", open);
     dateInput.addEventListener("click", open);
     document.addEventListener("click",e=>{if(!pickerWrap.contains(e.target))picker.hidden=true;});
