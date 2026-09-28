@@ -44,58 +44,6 @@ class ManagerLoanPlanForm(forms.ModelForm):
 
     def clean(self):
         cleaned = super().clean()
-        status = cleaned.get("status")
-        if status in (PlanStatus.IN_PROGRESS, PlanStatus.COMPLETED, PlanStatus.CANCELLED):
-            if self.instance.pk and self.instance.status != status:
-                raise forms.ValidationError("طرحی که وارد مرحله اجرا شده، از این فرم قابل تغییر وضعیت نیست.")
-        return cleaned
-
-
-class PaymentDestinationForm(forms.ModelForm):
-    class Meta:
-        model = PaymentDestination
-        fields = ("title", "account_holder", "card_number", "iban", "is_active")
-
-
-class ManagerLotteryDrawForm(forms.ModelForm):
-    scheduled_at = forms.CharField(
-        label="زمان قرعه‌کشی (شمسی)",
-        required=True,
-        widget=forms.TextInput(attrs={
-            "type": "text",
-            "placeholder": "۱۴۰۵/۰۷/۰۳ ۲۰:۳۰",
-            "inputmode": "numeric",
-            "class": "jalali-date-input",
-        }),
-    )
-
-    class Meta:
-        model = LotteryDraw
-        fields = ("loan_plan", "round_number", "scheduled_at")
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        if self.instance and self.instance.scheduled_at:
-            value = timezone.localtime(self.instance.scheduled_at)
-            jy, jm, jd = gregorian_to_jalali(value.year, value.month, value.day)
-            self.initial["scheduled_at"] = f"{jy:04d}/{jm:02d}/{jd:02d} {value:%H:%M}"
-
-    def clean_scheduled_at(self):
-        raw = str(self.cleaned_data.get("scheduled_at", "")).strip().replace("-", "/")
-        try:
-            date_part, time_part = raw.split()
-            y, m, d = [int(x) for x in date_part.split("/")]
-            hour, minute = [int(x) for x in time_part.split(":")[:2]]
-            gy, gm, gd = jalali_to_gregorian(y, m, d)
-            value = timezone.make_aware(datetime(gy, gm, gd, hour, minute), timezone.get_current_timezone())
-        except (ValueError, TypeError):
-            raise forms.ValidationError("زمان را به صورت ۱۴۰۵/۰۷/۰۳ ۲۰:۳۰ وارد کنید.")
-        if value <= timezone.now():
-            raise forms.ValidationError("زمان قرعه‌کشی باید در آینده باشد.")
-        return value
-
-    def clean(self):
-        cleaned = super().clean()
         plan = cleaned.get("loan_plan")
         round_number = cleaned.get("round_number")
         if plan and round_number:
@@ -106,19 +54,6 @@ class ManagerLotteryDrawForm(forms.ModelForm):
                 qs = qs.exclude(pk=self.instance.pk)
             if qs.exists():
                 raise forms.ValidationError("برای این طرح و این دوره قبلاً قرعه‌کشی ثبت شده است.")
-        return cleaned
-
-    def clean(self):
-        cleaned = super().clean()
-        plan = cleaned.get("loan_plan")
-        round_number = cleaned.get("round_number")
-        if plan and round_number:
-            if round_number > plan.duration_months:
-                raise forms.ValidationError("شماره دوره از تعداد دوره‌های طرح بیشتر است.")
-            if LotteryDraw.objects.filter(loan_plan=plan, round_number=round_number).exists():
-                raise forms.ValidationError("برای این طرح و این دوره قبلاً قرعه‌کشی ثبت شده است.")
-        if cleaned.get("scheduled_at") and cleaned["scheduled_at"] <= timezone.now():
-            raise forms.ValidationError("زمان قرعه‌کشی باید در آینده باشد.")
         return cleaned
 
 
