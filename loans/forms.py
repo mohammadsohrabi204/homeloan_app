@@ -32,7 +32,7 @@ class ManagerLoanPlanForm(forms.ModelForm):
     def clean_start_date(self):
         raw = str(self.cleaned_data.get("start_date", "")).strip().replace("-", "/")
         if not raw:
-            return value
+            raise forms.ValidationError("تاریخ شروع الزامی است.")
         try:
             y, m, d = [int(x) for x in raw.split("/")]
             gy, gm, gd = jalali_to_gregorian(y, m, d)
