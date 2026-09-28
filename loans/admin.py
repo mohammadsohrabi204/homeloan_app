@@ -277,8 +277,40 @@ class PaymentAdmin(admin.ModelAdmin):
         self.message_user(request, f"{rejected} رسید رد شد؛ کاربران می‌توانند رسید تازه بفرستند.")
 
 
+class LotteryDrawManagerForm(forms.ModelForm):
+    scheduled_at = forms.CharField(
+        label="زمان قرعه‌کشی (شمسی)",
+        widget=forms.TextInput(attrs={"type":"text","placeholder":"۱۴۰۵/۰۷/۰۳ ۲۰:۳۰","inputmode":"numeric","class":"jalali-date-input"}),
+    )
+    class Meta:
+        model = LotteryDraw
+        fields = "__all__"
+    def __init__(self,*args,**kwargs):
+        super().__init__(*args,**kwargs)
+        if self.instance and self.instance.scheduled_at:
+            value=timezone.localtime(self.instance.scheduled_at)
+            from .jalali import gregorian_to_jalali
+            y,m,d=gregorian_to_jalali(value.year,value.month,value.day)
+            self.initial["scheduled_at"]=f"{y:04d}/{m:02d}/{d:02d} {value:%H:%M}"
+    def clean_scheduled_at(self):
+        from .jalali import jalali_to_gregorian
+        raw=str(self.cleaned_data["scheduled_at"]).strip().replace("-","/")
+        try:
+            dp,tp=raw.split()
+            y,m,d=[int(x) for x in dp.split("/")]
+            hh,mm=[int(x) for x in tp.split(":")[:2]]
+            gy,gm,gd=jalali_to_gregorian(y,m,d)
+            from datetime import datetime
+            return timezone.make_aware(datetime(gy,gm,gd,hh,mm),timezone.get_current_timezone())
+        except (ValueError,TypeError):
+            raise forms.ValidationError("زمان را به صورت ۱۴۰۵/۰۷/۰۳ ۲۰:۳۰ وارد کنید.")
+
+    class Media:
+        js = ("js/manager_amount_words.js",)
+
 @admin.register(LotteryDraw)
 class LotteryDrawAdmin(admin.ModelAdmin):
+    form = LotteryDrawManagerForm
     list_display = ("loan_plan", "round_number", "jalali_scheduled", "status", "jalali_executed", "winner_reservation")
     list_filter = ("status", "loan_plan")
     readonly_fields = ("status", "executed_at", "winner_reservation", "eligible_snapshot", "integrity_hash", "created_by")
