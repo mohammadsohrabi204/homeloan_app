@@ -1,66 +1,169 @@
 from django import forms
 from django.contrib.auth import get_user_model
-from django.utils import timezone
-from datetime import datetime
-from .jalali import jalali_to_gregorian, gregorian_to_jalali
 
-from .models import FundSettings, LoanPlan, LotteryDraw, PaymentDestination, PlanStatus
-from .jalali import jalali_to_gregorian
+from .jalali import gregorian_to_jalali, jalali_to_gregorian
+from .models import (
+    FundSettings,
+    LoanPlan,
+    LotteryDraw,
+    PaymentDestination,
+)
 
 
 class ManagerLoanPlanForm(forms.ModelForm):
     start_date = forms.CharField(
         label="تاریخ شروع (شمسی)",
         required=True,
-        widget=forms.TextInput(attrs={"type": "text", "placeholder": "۱۴۰۵/۰۷/۰۳", "inputmode": "numeric", "class": "jalali-date-input"}),
+        widget=forms.TextInput(
+            attrs={
+                "type": "text",
+                "placeholder": "۱۴۰۵/۰۷/۰۳",
+                "inputmode": "numeric",
+                "class": "jalali-date-input",
+            }
+        ),
     )
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         if self.instance and self.instance.start_date:
-            gy, gm, gd = self.instance.start_date.year, self.instance.start_date.month, self.instance.start_date.day
+            gy = self.instance.start_date.year
+            gm = self.instance.start_date.month
+            gd = self.instance.start_date.day
             jy, jm, jd = gregorian_to_jalali(gy, gm, gd)
             self.initial["start_date"] = f"{jy:04d}/{jm:02d}/{jd:02d}"
 
     class Meta:
         model = LoanPlan
         fields = (
-            "title", "description", "total_amount", "monthly_payment",
-            "service_fee", "duration_months", "capacity", "payment_destination",
-            "status", "start_date",
+            "title",
+            "description",
+            "total_amount",
+            "monthly_payment",
+            "service_fee",
+            "duration_months",
+            "capacity",
+            "payment_destination",
+            "status",
+            "start_date",
         )
-        widgets = {"description": forms.Textarea(attrs={"rows": 4})}
+        widgets = {
+            "description": forms.Textarea(attrs={"rows": 4}),
+        }
 
     def clean_start_date(self):
         raw = str(self.cleaned_data.get("start_date", "")).strip().replace("-", "/")
         if not raw:
             raise forms.ValidationError("تاریخ شروع الزامی است.")
+
         try:
-            y, m, d = [int(x) for x in raw.split("/")]
+            parts = raw.split("/")
+            if len(parts) != 3:
+                raise ValueError
+            y, m, d = (int(part) for part in parts)
             gy, gm, gd = jalali_to_gregorian(y, m, d)
             from datetime import date
             return date(gy, gm, gd)
         except (ValueError, TypeError):
-            raise forms.ValidationError("تاریخ را به صورت ۱۴۰۵/۰۷/۰۳ وارد کنید.")
+            raise forms.ValidationError(
+                "تاریخ را به صورت ۱۴۰۵/۰۷/۰۳ وارد کنید."
+            )
+
+
+class PaymentDestinationForm(forms.ModelForm):
+    class Meta:
+        model = PaymentDestination
+        fields = (
+            "title",
+            "account_holder",
+            "card_number",
+            "iban",
+            "is_active",
+        )
+        widgets = {
+            "card_number": forms.TextInput(
+                attrs={"inputmode": "numeric", "maxlength": "16"}
+            ),
+            "iban": forms.TextInput(
+                attrs={"inputmode": "text", "maxlength": "26"}
+            ),
+        }
+
+    def clean_card_number(self):
+        value = self.cleaned_data.get("card_number", "").replace(" ", "").replace("-", "")
+        if value and (not value.isdigit() or len(value) != 16):
+            raise forms.ValidationError("شماره کارت باید ۱۶ رقم باشد.")
+        return value
+
+    def clean_iban(self):
+        value = self.cleaned_data.get("iban", "").replace(" ", "").upper()
+        if value and value.startswith("IR"):
+            if len(value) != 26 or not value[2:].isdigit():
+                raise forms.ValidationError("شماره شبا باید به صورت IR و ۲۴ رقم وارد شود.")
+        elif value:
+            if len(value) != 24 or not value.isdigit():
+                raise forms.ValidationError("شماره شبا باید ۲۴ رقم باشد یا با IR شروع شود.")
+            value = f"IR{value}"
+        return value
+
+
+class ManagerLotteryDrawForm(forms.ModelForm):
+    class Meta:
+        model = LotteryDraw
+        fields = (
+            "loan_plan",
+            "round_number",
+            "scheduled_at",
+        )
+        widgets = {
+            "scheduled_at": forms.DateTimeInput(
+                format="%Y-%m-%dT%H:%M",
+                attrs={"type": "datetime-local"},
+            ),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["loan_plan"].queryset = LoanPlan.objects.all().order_by("-created_at")
+        self.fields["scheduled_at"].input_formats = [
+            "%Y-%m-%dT%H:%M",
+            "%Y-%m-%d %H:%M",
+        ]
 
     def clean(self):
         cleaned = super().clean()
         plan = cleaned.get("loan_plan")
         round_number = cleaned.get("round_number")
+
         if plan and round_number:
             if round_number > plan.duration_months:
-                raise forms.ValidationError("شماره دوره از تعداد دوره‌های طرح بیشتر است.")
-            qs = LotteryDraw.objects.filter(loan_plan=plan, round_number=round_number)
-            if self.instance.pk:
-                qs = qs.exclude(pk=self.instance.pk)
-            if qs.exists():
-                raise forms.ValidationError("برای این طرح و این دوره قبلاً قرعه‌کشی ثبت شده است.")
+                self.add_error(
+                    "round_number",
+                    "شماره دوره از تعداد دوره‌های طرح بیشتر است.",
+                )
+            if LotteryDraw.objects.filter(
+                loan_plan=plan,
+                round_number=round_number,
+            ).exclude(pk=self.instance.pk).exists():
+                self.add_error(
+                    "round_number",
+                    "برای این طرح و این دوره قبلاً قرعه‌کشی ثبت شده است.",
+                )
+
         return cleaned
 
 
 class FundSettingsForm(forms.ModelForm):
     class Meta:
         model = FundSettings
-        fields = ("fund_name", "support_phone", "support_text", "payment_instructions", "terms_text", "is_active")
+        fields = (
+            "fund_name",
+            "support_phone",
+            "support_text",
+            "payment_instructions",
+            "terms_text",
+            "is_active",
+        )
         widgets = {
             "support_text": forms.Textarea(attrs={"rows": 2}),
             "payment_instructions": forms.Textarea(attrs={"rows": 5}),
@@ -74,4 +177,14 @@ User = get_user_model()
 class ManagerUserForm(forms.ModelForm):
     class Meta:
         model = User
-        fields = ("full_name", "phone_number", "national_id", "card_number", "iban", "phone_verified", "is_active", "is_staff", "is_2fa_enabled")
+        fields = (
+            "full_name",
+            "phone_number",
+            "national_id",
+            "card_number",
+            "iban",
+            "phone_verified",
+            "is_active",
+            "is_staff",
+            "is_2fa_enabled",
+        )
