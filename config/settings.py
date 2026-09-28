@@ -185,8 +185,10 @@ PHONE_OTP_TTL_MINUTES = int(os.environ.get("PHONE_OTP_TTL_MINUTES", "5"))
 # --- محدودسازی نرخ درخواست (ضدِ Brute-force) --------------------------------
 CACHES = {
     "default": {
-        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
-        # برای استقرار چندپردازشی/Production یک بک‌اند Redis معرفی کنید.
+        # Rate-limit باید بین تمام workerهای Gunicorn مشترک باشد؛ LocMemCache
+        # در محیط چندپردازشی برای این کار قابل اتکا نیست.
+        "BACKEND": "django.core.cache.backends.redis.RedisCache",
+        "LOCATION": os.environ.get("DJANGO_CACHE_URL", "redis://redis:6379/1"),
     }
 }
 
