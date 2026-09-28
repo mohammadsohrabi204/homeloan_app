@@ -20,10 +20,7 @@ from .forms import ManualReceiptForm
 @login_required
 @require_POST
 def pay(request, payment_id):
-    payment = get_object_or_404(
-        Payment.objects.select_related("reservation__loan_plan").select_for_update(),
-        pk=payment_id,
-    )
+    payment = get_object_or_404(Payment, pk=payment_id)
     if payment.reservation.user_id != request.user.id:
         raise PermissionDenied
 
@@ -69,8 +66,12 @@ def pay(request, payment_id):
 
 
 @login_required
+@transaction.atomic
 def callback(request, payment_id):
-    payment = get_object_or_404(Payment, pk=payment_id)
+    payment = get_object_or_404(
+        Payment.objects.select_related("reservation__loan_plan").select_for_update(),
+        pk=payment_id,
+    )
     if payment.reservation.user_id != request.user.id:
         raise PermissionDenied
 
