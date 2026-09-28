@@ -316,6 +316,37 @@ class LotteryDrawManagerForm(forms.ModelForm):
 
 @admin.register(LotteryDraw)
 class LotteryDrawAdmin(admin.ModelAdmin):
+    def save_model(self, request, obj, form, change):
+        if not change:
+            obj.created_by = request.user
+        super().save_model(request, obj, form, change)
+        if not change:
+            log_action(
+                request.user, "lottery_scheduled",
+                {"draw_id": obj.id, "plan_id": obj.loan_plan_id, "round": obj.round_number},
+                request.META.get("REMOTE_ADDR"),
+            )
+
+    @admin.action(description="برگزاری قرعه‌کشی برای موارد زمان‌بندی‌شدهٔ انتخاب‌شده")
+    def action_run_draw(self, request, queryset):
+        for draw in queryset.filter(status=LotteryStatus.SCHEDULED):
+            try:
+                winner = run_lottery_draw(draw, actor=request.user)
+                self.message_user(request, f"دورهٔ {draw.round_number} «{draw.loan_plan}» — برنده: {winner.user.full_name}")
+            except ValueError as exc:
+                self.message_user(request, f"دورهٔ {draw.round_number}: {exc}", level="error")
+
+    @admin.action(description="لغو قرعه‌کشی‌های زمان‌بندی‌شدهٔ انتخاب‌شده")
+    def action_cancel_draw(self, request, queryset):
+        for draw in queryset.filter(status=LotteryStatus.SCHEDULED):
+            draw.status = LotteryStatus.CANCELLED
+            draw.save(update_fields=["status"])
+            log_action(
+                request.user, "lottery_cancelled", {"draw_id": draw.id, "plan_id": draw.loan_plan_id},
+                request.META.get("REMOTE_ADDR"),
+            )
+
+
     form = LotteryDrawManagerForm
     list_display = ("loan_plan", "round_number", "jalali_scheduled", "status", "jalali_executed", "winner_reservation")
     list_filter = ("status", "loan_plan")
