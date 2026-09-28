@@ -247,43 +247,65 @@ def manager_payment_action(request, payment_id):
             pk=payment_id,
         )
         action = request.POST.get("action")
+
         if payment.status == PaymentStatus.PAID:
-        messages.info(request, "این قسط قبلاً تأیید شده است.")
-        return redirect("loans:manager_dashboard")
+            messages.info(request, "این قسط قبلاً تأیید شده است.")
+            return redirect("loans:manager_dashboard")
 
         if action == "approve":
             if not payment.manual_receipt:
                 messages.error(request, "برای تأیید دستی باید رسید پرداخت ثبت شده باشد.")
                 return redirect("loans:manager_dashboard")
             payment.status = PaymentStatus.PAID
-        payment.paid_at = timezone.now()
-        payment.confirmed_by = request.user
-        payment.receipt_rejection_reason = ""
-        payment.save(update_fields=["status", "paid_at", "confirmed_by", "receipt_rejection_reason"])
-        Notification.objects.get_or_create(user=payment.reservation.user, payment=payment, kind="payment_approved", defaults={"title":"تأیید پرداخت","message":f"پرداخت قسط دورهٔ {payment.round_number} وام «{payment.reservation.loan_plan.title}» تأیید شد."})
-        log_action(request.user, "manual_payment_approved", {"payment_id": payment.id}, request.META.get("REMOTE_ADDR"))
-        messages.success(request, "پرداخت با موفقیت تأیید شد.")
+            payment.paid_at = timezone.now()
+            payment.confirmed_by = request.user
+            payment.receipt_rejection_reason = ""
+            payment.save(update_fields=["status", "paid_at", "confirmed_by", "receipt_rejection_reason"])
+            Notification.objects.get_or_create(
+                user=payment.reservation.user,
+                payment=payment,
+                kind="payment_approved",
+                defaults={
+                    "title": "تأیید پرداخت",
+                    "message": f"پرداخت قسط دورهٔ {payment.round_number} وام «{payment.reservation.loan_plan.title}» تأیید شد.",
+                },
+            )
+            log_action(request.user, "manual_payment_approved", {"payment_id": payment.id}, request.META.get("REMOTE_ADDR"))
+            messages.success(request, "پرداخت با موفقیت تأیید شد.")
+
         elif action == "reject":
-        reason = request.POST.get("reason", "").strip()
-        if not reason:
-            messages.error(request, "برای رد رسید باید دلیل وارد شود.")
-            return redirect("loans:manager_dashboard")
-        payment.status = PaymentStatus.RECEIPT_REJECTED
-        reason = reason[:250]
-        payment.receipt_rejection_reason = reason
-        payment.save(update_fields=["status", "receipt_rejection_reason"])
-        Notification.objects.get_or_create(user=payment.reservation.user, payment=payment, kind="payment_rejected", defaults={"title":"رد رسید پرداخت","message":f"رسید قسط دورهٔ {payment.round_number} وام «{payment.reservation.loan_plan.title}» رد شد. دلیل: {reason[:500]}"})
-        log_action(
-            request.user,
-            "manual_receipt_rejected",
-            {"payment_id": payment.id, "reason": reason},
-            request.META.get("REMOTE_ADDR"),
-        )
-        messages.success(request, "رسید رد شد و دلیل آن ثبت گردید.")
+            if not payment.manual_receipt:
+                messages.error(request, "برای رد کردن، ابتدا باید رسید پرداخت ثبت شده باشد.")
+                return redirect("loans:manager_dashboard")
+            reason = request.POST.get("reason", "").strip()
+            if not reason:
+                messages.error(request, "برای رد رسید باید دلیل وارد شود.")
+                return redirect("loans:manager_dashboard")
+            reason = reason[:250]
+            payment.status = PaymentStatus.RECEIPT_REJECTED
+            payment.receipt_rejection_reason = reason
+            payment.save(update_fields=["status", "receipt_rejection_reason"])
+            Notification.objects.get_or_create(
+                user=payment.reservation.user,
+                payment=payment,
+                kind="payment_rejected",
+                defaults={
+                    "title": "رد رسید پرداخت",
+                    "message": f"رسید قسط دورهٔ {payment.round_number} وام «{payment.reservation.loan_plan.title}» رد شد. دلیل: {reason}",
+                },
+            )
+            log_action(
+                request.user,
+                "manual_receipt_rejected",
+                {"payment_id": payment.id, "reason": reason},
+                request.META.get("REMOTE_ADDR"),
+            )
+            messages.success(request, "رسید رد شد و دلیل آن ثبت گردید.")
+
         else:
             messages.error(request, "عملیات نامعتبر است.")
-        return redirect("loans:manager_dashboard")
 
+    return redirect("loans:manager_dashboard")
 
 
 @login_required
