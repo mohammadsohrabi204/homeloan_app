@@ -19,7 +19,10 @@ class ManagerLoanPlanForm(forms.ModelForm):
                 "type": "text",
                 "placeholder": "۱۴۰۵/۰۷/۰۳",
                 "inputmode": "numeric",
+                "autocomplete": "off",
+                "maxlength": "10",
                 "class": "jalali-date-input",
+                "dir": "ltr",
             }
         ),
     )
@@ -58,19 +61,42 @@ class ManagerLoanPlanForm(forms.ModelForm):
             self.initial["start_date"] = f"{jy:04d}/{jm:02d}/{jd:02d}"
 
     def clean_start_date(self):
-        raw = str(self.cleaned_data.get("start_date", "")).strip().replace("-", "/")
+        raw = str(self.cleaned_data.get("start_date", "")).strip()
         if not raw:
             raise forms.ValidationError("تاریخ شروع الزامی است.")
 
+        # Accept Persian/Arabic digits and common separators so the field
+        # remains fully editable on desktop and mobile keyboards.
+        translation = str.maketrans("۰۱۲۳۴۵۶۷۸۹٠١٢٣٤٥٦٧٨٩", "01234567890123456789")
+        raw = raw.translate(translation).replace("-", "/").replace(".", "/")
         try:
-            parts = raw.split("/")
-            if len(parts) != 3:
+            parts = [part.strip() for part in raw.split("/")]
+            if len(parts) != 3 or not all(parts):
                 raise ValueError
             y, m, d = (int(part) for part in parts)
+            if y < 1 or not 1 <= m <= 12:
+                raise ValueError
+            if m <= 6:
+                max_day = 31
+            elif m <= 11:
+                max_day = 30
+            else:
+                # jalali_to_gregorian validates the final Esfand day through
+                # the resulting Gregorian date round-trip below.
+                max_day = 30
+            if not 1 <= d <= max_day:
+                raise ValueError
+
             gy, gm, gd = jalali_to_gregorian(y, m, d)
             from datetime import date
-            return date(gy, gm, gd)
-        except (ValueError, TypeError):
+            converted = date(gy, gm, gd)
+
+            # Round-trip check catches invalid Esfand dates.
+            jy, jm, jd = gregorian_to_jalali(gy, gm, gd)
+            if (jy, jm, jd) != (y, m, d):
+                raise ValueError
+            return converted
+        except (ValueError, TypeError, OverflowError):
             raise forms.ValidationError(
                 "تاریخ را به صورت ۱۴۰۵/۰۷/۰۳ وارد کنید."
             )
