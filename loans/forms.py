@@ -24,15 +24,6 @@ class ManagerLoanPlanForm(forms.ModelForm):
         ),
     )
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        if self.instance and self.instance.start_date:
-            gy = self.instance.start_date.year
-            gm = self.instance.start_date.month
-            gd = self.instance.start_date.day
-            jy, jm, jd = gregorian_to_jalali(gy, gm, gd)
-            self.initial["start_date"] = f"{jy:04d}/{jm:02d}/{jd:02d}"
-
     class Meta:
         model = LoanPlan
         fields = (
