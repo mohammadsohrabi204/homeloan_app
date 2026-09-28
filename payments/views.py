@@ -89,7 +89,8 @@ def callback(request, payment_id):
         messages.error(request, "شناسهٔ بازگشتی درگاه با این قسط مطابقت ندارد.")
         return redirect("loans:plan_detail", plan_id=payment.reservation.loan_plan_id)
 
-    gateway = get_gateway()
+    # Callback must use the gateway recorded when this payment was started.
+    gateway = get_gateway(payment.gateway or None)
     try:
         # مبلغ از رکورد سرور خوانده می‌شود، نه از پارامتر ورودی — تا کاربر نتواند مبلغ را دستکاری کند.
         result = gateway.verify_payment(amount=payment.amount, authority=authority)
