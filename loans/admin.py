@@ -85,15 +85,15 @@ class LoanPlanAdmin(admin.ModelAdmin):
     به پنل مدیریت جنگو ندارند و فقط از صفحات عمومی سایت رزرو/پرداخت انجام می‌دهند.
     """
 
-    list_display = ("title", "total_amount_display", "monthly_payment_display", "service_fee_display", "duration_months", "capacity_display", "status", "created_at")
+    list_display = ("title", "total_amount_display", "monthly_payment_display", "service_fee_display", "duration_months", "capacity_display", "status", "jalali_created_at")
     list_filter = ("status",)
     search_fields = ("title",)
-    readonly_fields = ("created_by", "created_at")
+    readonly_fields = ("created_by", "jalali_created_at")
     inlines = [ReservationInline]
     actions = ["action_start_plan"]
     fields = (
         "title", "description", "total_amount", "monthly_payment", "service_fee", "start_date",
-        "duration_months", "capacity", "payment_destination", "status", "created_by", "created_at",
+        "duration_months", "capacity", "payment_destination", "status", "created_by", "jalali_created_at",
     )
 
     def save_model(self, request, obj, form, change):
@@ -117,36 +117,10 @@ class LoanPlanAdmin(admin.ModelAdmin):
 
     form = LoanPlanManagerForm
 
-    def get_form(self, request, obj=None, **kwargs):
-        from django import forms
-        from .jalali import gregorian_to_jalali, jalali_to_gregorian
-        class JalaliDateForm(forms.ModelForm):
-            start_date = forms.CharField(
-                label="تاریخ شروع (شمسی)",
-                widget=forms.TextInput(attrs={
-                    "type": "text", "placeholder": "۱۴۰۵/۰۷/۰۳",
-                    "inputmode": "numeric", "class": "jalali-date-input",
-                }),
-            )
-            class Meta:
-                model = LoanPlan
-                fields = "__all__"
-            def __init__(self, *args, **kwargs):
-                super().__init__(*args, **kwargs)
-                if self.instance and self.instance.start_date:
-                    y,m,d = gregorian_to_jalali(self.instance.start_date.year, self.instance.start_date.month, self.instance.start_date.day)
-                    self.initial["start_date"] = f"{y:04d}/{m:02d}/{d:02d}"
-            def clean_start_date(self):
-                raw = str(self.cleaned_data["start_date"]).strip().replace("-", "/")
-                try:
-                    y,m,d = [int(x) for x in raw.split("/")]
-                    gy,gm,gd = jalali_to_gregorian(y,m,d)
-                    from datetime import date
-                    return date(gy,gm,gd)
-                except (ValueError,TypeError):
-                    raise forms.ValidationError("تاریخ را به صورت ۱۴۰۵/۰۷/۰۳ وارد کنید.")
-        return super().get_form(request, obj, **kwargs)
 
+
+    @admin.display(description="تاریخ ایجاد", ordering="created_at")
+    def jalali_created_at(self, obj): return format_jalali(obj.created_at)
 
     @admin.display(description="مبلغ وام")
     def total_amount_display(self, obj):
@@ -180,11 +154,14 @@ class LoanPlanAdmin(admin.ModelAdmin):
 
 @admin.register(Reservation)
 class ReservationAdmin(admin.ModelAdmin):
-    list_display = ("user", "loan_plan", "status", "has_won", "won_round", "reserved_at")
+    list_display = ("user", "loan_plan", "status", "has_won", "won_round", "jalali_reserved_at")
     list_filter = ("status", "has_won", "loan_plan")
     search_fields = ("user__full_name", "user__phone_number")
     autocomplete_fields = ["user", "loan_plan"]
-    readonly_fields = ("user", "loan_plan", "status", "has_won", "won_round", "reserved_at")
+    readonly_fields = ("user", "loan_plan", "status", "has_won", "won_round", "jalali_reserved_at")
+
+    @admin.display(description="تاریخ رزرو", ordering="reserved_at")
+    def jalali_reserved_at(self, obj): return format_jalali(obj.reserved_at)
 
     def has_add_permission(self, request):
         return False
@@ -400,10 +377,13 @@ class FundSettingsAdmin(admin.ModelAdmin):
 
 @admin.register(Notification)
 class NotificationAdmin(admin.ModelAdmin):
-    list_display = ("user", "title", "kind", "is_read", "created_at")
+    list_display = ("user", "title", "kind", "is_read", "jalali_created_at")
     list_filter = ("kind", "is_read")
     search_fields = ("user__full_name", "user__phone_number", "title", "message")
     readonly_fields = ("user", "title", "message", "kind", "payment", "lottery_draw", "created_at")
+
+    @admin.display(description="زمان ایجاد", ordering="created_at")
+    def jalali_created_at(self, obj): return format_jalali(obj.created_at)
 
     def has_add_permission(self, request):
         return False
