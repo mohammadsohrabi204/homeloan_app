@@ -180,9 +180,10 @@ class PaymentAdmin(admin.ModelAdmin):
     search_fields = ("reservation__user__full_name", "reservation__user__phone_number")
     actions = ["action_confirm_payment", "action_reject_receipt"]
     readonly_fields = (
-        "reservation", "round_number", "amount", "due_date", "status", "gateway",
-        "gateway_authority", "gateway_ref", "receipt_link", "manual_reference", "receipt_submitted_at", "receipt_rejection_reason", "paid_at", "confirmed_by",
+        "reservation", "round_number", "amount", "jalali_due_readonly", "status", "gateway",
+        "gateway_authority", "gateway_ref", "receipt_link", "manual_reference", "jalali_receipt_submitted_at", "receipt_rejection_reason", "jalali_paid_at", "confirmed_by",
     )
+    fields = readonly_fields
     exclude = ("manual_receipt",)
 
     def has_add_permission(self, request):
@@ -214,6 +215,15 @@ class PaymentAdmin(admin.ModelAdmin):
 
     @admin.display(description="سررسید", ordering="due_date")
     def jalali_due(self, obj): return format_jalali(obj.due_date)
+
+    @admin.display(description="سررسید (شمسی)", ordering="due_date")
+    def jalali_due_readonly(self, obj): return format_jalali(obj.due_date)
+
+    @admin.display(description="زمان ارسال رسید (شمسی)", ordering="receipt_submitted_at")
+    def jalali_receipt_submitted_at(self, obj): return format_jalali(obj.receipt_submitted_at)
+
+    @admin.display(description="زمان پرداخت (شمسی)", ordering="paid_at")
+    def jalali_paid_at(self, obj): return format_jalali(obj.paid_at)
 
     @admin.display(description="زمان پرداخت", ordering="paid_at")
     def jalali_paid(self, obj): return format_jalali(obj.paid_at)
@@ -344,7 +354,7 @@ class AuditLogAdmin(admin.ModelAdmin):
     list_display = ("jalali_created", "actor", "action", "ip_address")
     list_filter = ("action",)
     search_fields = ("action", "details", "actor__full_name", "actor__phone_number")
-    readonly_fields = [f.name for f in AuditLog._meta.fields]
+    readonly_fields = [f.name for f in AuditLog._meta.fields if f.name != "created_at"] + ["jalali_created_at"]
 
     @admin.display(description="زمان", ordering="created_at")
     def jalali_created(self, obj): return format_jalali(obj.created_at)
@@ -364,9 +374,12 @@ class FundSettingsAdmin(admin.ModelAdmin):
     fieldsets = (
         ("اطلاعات عمومی", {"fields": ("fund_name", "support_phone", "support_text", "is_active")}),
         ("متن‌های قابل نمایش به کاربران", {"fields": ("payment_instructions", "terms_text")}),
-        ("سیستم", {"fields": ("updated_at",)}),
+        ("سیستم", {"fields": ("jalali_updated_at",)}),
     )
-    readonly_fields = ("updated_at",)
+    readonly_fields = ("jalali_updated_at",)
+
+    @admin.display(description="آخرین بروزرسانی (شمسی)", ordering="updated_at")
+    def jalali_updated_at(self, obj): return format_jalali(obj.updated_at)
 
     def has_add_permission(self, request):
         return not FundSettings.objects.exists()
@@ -380,9 +393,12 @@ class NotificationAdmin(admin.ModelAdmin):
     list_display = ("user", "title", "kind", "is_read", "jalali_created_at")
     list_filter = ("kind", "is_read")
     search_fields = ("user__full_name", "user__phone_number", "title", "message")
-    readonly_fields = ("user", "title", "message", "kind", "payment", "lottery_draw", "created_at")
+    readonly_fields = ("user", "title", "message", "kind", "payment", "lottery_draw", "jalali_created_at")
 
     @admin.display(description="زمان ایجاد", ordering="created_at")
+    def jalali_created_at(self, obj): return format_jalali(obj.created_at)
+
+    @admin.display(description="زمان ایجاد (شمسی)", ordering="created_at")
     def jalali_created_at(self, obj): return format_jalali(obj.created_at)
 
     def has_add_permission(self, request):
