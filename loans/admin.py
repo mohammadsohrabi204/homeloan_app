@@ -125,7 +125,7 @@ class LoanPlanAdmin(admin.ModelAdmin):
 
 
     @admin.display(description="تاریخ ایجاد", ordering="created_at")
-    def jalali_created_at(self, obj): return format_jalali(obj.created_at)
+    def jalali_created_at(self, obj): return format_jalali(obj.created_at) if obj and obj.created_at else "—"
 
     @admin.display(description="مبلغ وام")
     def total_amount_display(self, obj):
@@ -166,7 +166,7 @@ class ReservationAdmin(admin.ModelAdmin):
     readonly_fields = ("user", "loan_plan", "status", "has_won", "won_round", "jalali_reserved_at")
 
     @admin.display(description="تاریخ رزرو", ordering="reserved_at")
-    def jalali_reserved_at(self, obj): return format_jalali(obj.reserved_at)
+    def jalali_reserved_at(self, obj): return format_jalali(obj.reserved_at) if obj and obj.reserved_at else "—"
 
     def has_add_permission(self, request):
         return False
@@ -353,7 +353,7 @@ class LotteryDrawAdmin(admin.ModelAdmin):
     def jalali_executed(self, obj): return format_jalali(obj.executed_at)
 
     @admin.display(description="زمان اجرا (شمسی)", ordering="executed_at")
-    def jalali_executed_readonly(self, obj): return format_jalali(obj.executed_at)
+    def jalali_executed_readonly(self, obj): return format_jalali(obj.executed_at) if obj and obj.executed_at else "—"
 
 
 
