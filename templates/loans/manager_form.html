@@ -10,7 +10,7 @@
       {{ field.label_tag }}
       <div class="jalali-picker-wrap">
         {{ field }}
-        {% if field.name == "start_date" %}
+        {% if field.name == "start_date" or field.name == "scheduled_at" %}
           <button type="button" class="jalali-calendar-toggle" aria-label="باز کردن تقویم">📅</button>
           <div class="jalali-picker" hidden>
             <div class="jalali-picker-head">
@@ -125,14 +125,14 @@
       return [gy,gm,n+1];
     };
     let initial=g2j(now.getFullYear(),now.getMonth()+1,now.getDate());
-    const parsed=()=>{const p=en(dateInput.value).replace(/[-.]/g,"/").split("/").map(Number);return p.length===3&&p.every(Number.isFinite)?p:null;};
+    const parsed=()=>{const datePart=en(dateInput.value.trim().split(/\\s+/)[0]);const p=datePart.replace(/[-.]/g,"/").split("/").map(Number);return p.length===3&&p.every(Number.isFinite)?p:null;};
     let current=parsed() || initial;
     let view=[current[0],current[1]];
     const daysInMonth=(y,m)=>m<=6?31:(m<=11?30:(j2g(y+1,1,1)[2]===1?30:29));
     const sync=()=>{
       current[0]=+yearSelect.value; current[1]=+monthSelect.value; current[2]=+daySelect.value;
       const max=daysInMonth(current[0],current[1]); if(current[2]>max) current[2]=max;
-      dateInput.value=fa(current[0])+"/"+fa(String(current[1]).padStart(2,"0"))+"/"+fa(String(current[2]).padStart(2,"0"));
+      const dateText=fa(current[0])+"/"+fa(String(current[1]).padStart(2,"0"))+"/"+fa(String(current[2]).padStart(2,"0"));\n      const timeMatch=dateInput.value.trim().match(/\\s+(\\d{1,2}:\\d{2})$/);\n      dateInput.value=dateText+(dateInput.name==="scheduled_at" ? " "+(timeMatch?timeMatch[1]:"۲۰:۳۰") : "");
       view=[current[0],current[1]]; render();
       dateInput.dispatchEvent(new Event("change",{bubbles:true}));
     };
