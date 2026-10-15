@@ -11,9 +11,12 @@ from .services import log_action, run_lottery_draw, start_loan_plan
 class ReservationInline(admin.TabularInline):
     model = Reservation
     extra = 0
-    fields = ("user", "status", "has_won", "won_round", "reserved_at")
+    fields = ("user", "status", "has_won", "won_round", "jalali_reserved_at")
     readonly_fields = fields
     can_delete = False
+
+    @admin.display(description="تاریخ رزرو (شمسی)", ordering="reserved_at")
+    def jalali_reserved_at(self, obj): return format_jalali(obj.reserved_at) if obj and obj.reserved_at else "—"
 
     def has_add_permission(self, request, obj=None):
         return False
@@ -164,6 +167,7 @@ class ReservationAdmin(admin.ModelAdmin):
     search_fields = ("user__full_name", "user__phone_number")
     autocomplete_fields = ["user", "loan_plan"]
     readonly_fields = ("user", "loan_plan", "status", "has_won", "won_round", "jalali_reserved_at")
+    fields = readonly_fields
 
     @admin.display(description="تاریخ رزرو", ordering="reserved_at")
     def jalali_reserved_at(self, obj): return format_jalali(obj.reserved_at) if obj and obj.reserved_at else "—"
