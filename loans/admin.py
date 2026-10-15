@@ -292,7 +292,7 @@ class LotteryDrawManagerForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         if self.instance and self.instance.scheduled_at:
             from .jalali import gregorian_to_jalali
-            dt = self.instance.scheduled_at
+            dt = timezone.localtime(self.instance.scheduled_at) if timezone.is_aware(self.instance.scheduled_at) else self.instance.scheduled_at
             y,m,d = gregorian_to_jalali(dt.year, dt.month, dt.day)
             self.initial["scheduled_at"] = f"{y:04d}/{m:02d}/{d:02d} {dt:%H:%M}"
 
@@ -302,15 +302,22 @@ class LotteryDrawManagerForm(forms.ModelForm):
     def clean_scheduled_at(self):
         from datetime import datetime
         from django.utils import timezone
-        from .jalali import jalali_to_gregorian
-        raw = str(self.cleaned_data["scheduled_at"]).strip().replace("-", "/")
+        from .jalali import gregorian_to_jalali, jalali_to_gregorian
+        raw = str(self.cleaned_data.get("scheduled_at", "")).strip()
+        raw = raw.translate(str.maketrans("۰۱۲۳۴۵۶۷۸۹٠١٢٣٤٥٦٧٨٩", "01234567890123456789")).replace("-", "/")
         try:
             date_part, time_part = raw.split()
-            y,m,d = [int(x) for x in date_part.split("/")]
-            hh,mm = [int(x) for x in time_part.split(":")]
-            gy,gm,gd = jalali_to_gregorian(y,m,d)
-            return timezone.make_aware(datetime(gy,gm,gd,hh,mm))
-        except (ValueError, TypeError):
+            y, m, d = (int(x) for x in date_part.split("/"))
+            hh, mm = (int(x) for x in time_part.split(":"))
+            if y < 1 or not 1 <= m <= 12 or not 1 <= d <= (31 if m <= 6 else 30):
+                raise ValueError
+            if not 0 <= hh <= 23 or not 0 <= mm <= 59:
+                raise ValueError
+            gy, gm, gd = jalali_to_gregorian(y, m, d)
+            if gregorian_to_jalali(gy, gm, gd) != (y, m, d):
+                raise ValueError
+            return timezone.make_aware(datetime(gy, gm, gd, hh, mm), timezone.get_current_timezone())
+        except (ValueError, TypeError, OverflowError):
             raise forms.ValidationError("زمان را به صورت ۱۴۰۵/۰۷/۰۳ ۲۰:۳۰ وارد کنید.")
 
 @admin.register(LotteryDraw)
