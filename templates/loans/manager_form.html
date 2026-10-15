@@ -125,7 +125,7 @@
       return [gy,gm,n+1];
     };
     let initial=g2j(now.getFullYear(),now.getMonth()+1,now.getDate());
-    const parsed=()=>{const datePart=en(dateInput.value.trim().split(/\\s+/)[0]);const p=datePart.replace(/[-.]/g,"/").split("/").map(Number);return p.length===3&&p.every(Number.isFinite)?p:null;};
+    const parsed=()=>{const datePart=en(dateInput.value.trim().split(/\s+/)[0]);const p=datePart.replace(/[-.]/g,"/").split("/").map(Number);return p.length===3&&p.every(Number.isFinite)?p:null;};
     let current=parsed() || initial;
     let view=[current[0],current[1]];
     const daysInMonth=(y,m)=>m<=6?31:(m<=11?30:(j2g(y+1,1,1)[2]===1?30:29));
@@ -134,10 +134,9 @@
       const max=daysInMonth(current[0],current[1]); if(current[2]>max) current[2]=max;
       const dateText=fa(current[0])+"/"+fa(String(current[1]).padStart(2,"0"))+"/"+fa(String(current[2]).padStart(2,"0"));
       const timeMatch=en(dateInput.value.trim()).match(/\s+(\d{1,2}:\d{2})$/);
-      dateInput.value=dateText+(dateInput.name==="scheduled_at" ? " "+(timeMatch?timeMatch[1]:"20:30") : ""); for(let y=view[0]-10;y<=view[0]+10;y++){const o=new Option(fa(y),y);yearSelect.add(o);}
-      monthSelect.innerHTML=""; monthNames.forEach((m,i)=>monthSelect.add(new Option(m, i+1)));
-      daySelect.innerHTML=""; for(let d=1;d<=daysInMonth(view[0],view[1]);d++) daySelect.add(new Option(fa(d),d));
-      yearSelect.value=current[0];monthSelect.value=current[1];daySelect.value=current[2];
+      dateInput.value=dateText+(dateInput.name==="scheduled_at" ? " "+(timeMatch?timeMatch[1]:"20:30") : "");
+      view=[current[0],current[1]]; render();
+      dateInput.dispatchEvent(new Event("change",{bubbles:true}));
     };
     const render=()=>{
       const [y,m]=view; title.textContent=monthNames[m-1]+" "+fa(y); fillWheels();
