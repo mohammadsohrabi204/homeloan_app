@@ -140,6 +140,19 @@ class PaymentDestinationForm(forms.ModelForm):
 
 
 class ManagerLotteryDrawForm(forms.ModelForm):
+    scheduled_at = forms.CharField(
+        label="زمان قرعه‌کشی (شمسی)",
+        widget=forms.TextInput(attrs={
+            "type": "text",
+            "placeholder": "۱۴۰۵/۰۷/۰۳ ۲۰:۳۰",
+            "inputmode": "numeric",
+            "autocomplete": "off",
+            "maxlength": "16",
+            "class": "jalali-date-input",
+            "dir": "ltr",
+        }),
+    )
+
     class Meta:
         model = LotteryDraw
         fields = (
@@ -147,20 +160,39 @@ class ManagerLotteryDrawForm(forms.ModelForm):
             "round_number",
             "scheduled_at",
         )
-        widgets = {
-            "scheduled_at": forms.DateTimeInput(
-                format="%Y-%m-%dT%H:%M",
-                attrs={"type": "datetime-local"},
-            ),
-        }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["loan_plan"].queryset = LoanPlan.objects.all().order_by("-created_at")
-        self.fields["scheduled_at"].input_formats = [
-            "%Y-%m-%dT%H:%M",
-            "%Y-%m-%d %H:%M",
-        ]
+        if self.instance and self.instance.scheduled_at:
+            from .jalali import gregorian_to_jalali
+            from django.utils import timezone
+            dt = timezone.localtime(self.instance.scheduled_at) if timezone.is_aware(self.instance.scheduled_at) else self.instance.scheduled_at
+            jy, jm, jd = gregorian_to_jalali(dt.year, dt.month, dt.day)
+            self.initial["scheduled_at"] = f"{jy:04d}/{jm:02d}/{jd:02d} {dt:%H:%M}"
+
+    def clean_scheduled_at(self):
+        from datetime import datetime
+        from django.utils import timezone
+        from .jalali import gregorian_to_jalali, jalali_to_gregorian
+
+        raw = str(self.cleaned_data.get("scheduled_at", "")).strip()
+        raw = raw.translate(str.maketrans("۰۱۲۳۴۵۶۷۸۹٠١٢٣٤٥٦٧٨٩", "01234567890123456789"))
+        raw = raw.replace("-", "/")
+        try:
+            date_part, time_part = raw.split()
+            y, m, d = (int(part) for part in date_part.split("/"))
+            hh, mm = (int(part) for part in time_part.split(":"))
+            if not (1 <= m <= 12 and 0 <= hh <= 23 and 0 <= mm <= 59):
+                raise ValueError
+            if not (1 <= d <= (31 if m <= 6 else 30)):
+                raise ValueError
+            gy, gm, gd = jalali_to_gregorian(y, m, d)
+            if gregorian_to_jalali(gy, gm, gd) != (y, m, d):
+                raise ValueError
+            return timezone.make_aware(datetime(gy, gm, gd, hh, mm), timezone.get_current_timezone())
+        except (ValueError, TypeError, OverflowError):
+            raise forms.ValidationError("زمان را به صورت ۱۴۰۵/۰۷/۰۳ ۲۰:۳۰ وارد کنید.")
 
     def clean(self):
         cleaned = super().clean()
@@ -183,7 +215,6 @@ class ManagerLotteryDrawForm(forms.ModelForm):
                 )
 
         return cleaned
-
 
 class FundSettingsForm(forms.ModelForm):
     class Meta:
