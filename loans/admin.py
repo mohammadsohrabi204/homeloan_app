@@ -342,8 +342,8 @@ class LotteryDrawAdmin(admin.ModelAdmin):
     form = LotteryDrawManagerForm
     list_display = ("loan_plan", "round_number", "jalali_scheduled", "status", "jalali_executed", "winner_reservation")
     list_filter = ("status", "loan_plan")
-    readonly_fields = ("status", "executed_at", "winner_reservation", "eligible_snapshot", "integrity_hash", "created_by")
-    fields = ("loan_plan", "round_number", "scheduled_at", "status", "executed_at", "winner_reservation", "eligible_snapshot", "integrity_hash", "created_by")
+    readonly_fields = ("status", "jalali_executed_readonly", "winner_reservation", "eligible_snapshot", "integrity_hash", "created_by")
+    fields = ("loan_plan", "round_number", "scheduled_at", "status", "jalali_executed_readonly", "winner_reservation", "eligible_snapshot", "integrity_hash", "created_by")
     actions = ["action_run_draw", "action_cancel_draw"]
 
     @admin.display(description="زمان اعلام", ordering="scheduled_at")
@@ -351,6 +351,9 @@ class LotteryDrawAdmin(admin.ModelAdmin):
 
     @admin.display(description="زمان اجرا", ordering="executed_at")
     def jalali_executed(self, obj): return format_jalali(obj.executed_at)
+
+    @admin.display(description="زمان اجرا (شمسی)", ordering="executed_at")
+    def jalali_executed_readonly(self, obj): return format_jalali(obj.executed_at)
 
 
 
