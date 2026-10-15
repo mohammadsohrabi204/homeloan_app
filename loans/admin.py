@@ -64,14 +64,19 @@ class LoanPlanManagerForm(forms.ModelForm):
             self.initial["start_date"] = f"{y:04d}/{m:02d}/{d:02d}"
 
     def clean_start_date(self):
-        from .jalali import jalali_to_gregorian
-        raw = str(self.cleaned_data["start_date"]).strip().replace("-", "/")
+        from datetime import date
+        from .jalali import gregorian_to_jalali, jalali_to_gregorian
+        raw = str(self.cleaned_data.get("start_date", "")).strip()
+        raw = raw.translate(str.maketrans("۰۱۲۳۴۵۶۷۸۹٠١٢٣٤٥٦٧٨٩", "01234567890123456789")).replace("-", "/").replace(".", "/")
         try:
-            y,m,d = [int(x) for x in raw.split("/")]
-            gy,gm,gd = jalali_to_gregorian(y,m,d)
-            from datetime import date
-            return date(gy,gm,gd)
-        except (ValueError,TypeError):
+            y, m, d = (int(part) for part in raw.split("/"))
+            if y < 1 or not 1 <= m <= 12 or not 1 <= d <= (31 if m <= 6 else 30):
+                raise ValueError
+            gy, gm, gd = jalali_to_gregorian(y, m, d)
+            if gregorian_to_jalali(gy, gm, gd) != (y, m, d):
+                raise ValueError
+            return date(gy, gm, gd)
+        except (ValueError, TypeError, OverflowError):
             raise forms.ValidationError("تاریخ را به صورت ۱۴۰۵/۰۷/۰۳ وارد کنید.")
 
     class Media:
@@ -355,9 +360,13 @@ class AuditLogAdmin(admin.ModelAdmin):
     list_filter = ("action",)
     search_fields = ("action", "details", "actor__full_name", "actor__phone_number")
     readonly_fields = [f.name for f in AuditLog._meta.fields if f.name != "created_at"] + ["jalali_created_at"]
+    fields = readonly_fields
 
     @admin.display(description="زمان", ordering="created_at")
     def jalali_created(self, obj): return format_jalali(obj.created_at)
+
+    @admin.display(description="زمان ایجاد (شمسی)", ordering="created_at")
+    def jalali_created_at(self, obj): return format_jalali(obj.created_at)
 
     def has_add_permission(self, request):
         return False
@@ -394,9 +403,7 @@ class NotificationAdmin(admin.ModelAdmin):
     list_filter = ("kind", "is_read")
     search_fields = ("user__full_name", "user__phone_number", "title", "message")
     readonly_fields = ("user", "title", "message", "kind", "payment", "lottery_draw", "jalali_created_at")
-
-    @admin.display(description="زمان ایجاد", ordering="created_at")
-    def jalali_created_at(self, obj): return format_jalali(obj.created_at)
+    fields = readonly_fields
 
     @admin.display(description="زمان ایجاد (شمسی)", ordering="created_at")
     def jalali_created_at(self, obj): return format_jalali(obj.created_at)
