@@ -87,7 +87,7 @@
 
   // تقویم شمسی + انتخاب با اسکرول/چرخ ماوس برای تاریخ شروع
   const dateInput = document.querySelector(".jalali-date-input");
-  const pickerWrap = document.querySelector(".jalali-picker-wrap");
+  const pickerWrap = dateInput ? dateInput.closest(".jalali-picker-wrap") : null;
   if (dateInput && pickerWrap) {
     const picker = pickerWrap.querySelector(".jalali-picker");
     const toggle = pickerWrap.querySelector(".jalali-calendar-toggle");
