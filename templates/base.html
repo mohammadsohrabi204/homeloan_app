@@ -1,4 +1,4 @@
-{% load static %}<!DOCTYPE html>
+{% load static manager_extras %}<!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
   <meta charset="UTF-8">
@@ -40,7 +40,7 @@
   </main>
 
   <footer class="site-footer">
-    <div class="container">© {% now "Y" %} صندوق وام خانگی</div>
+    <div class="container">© {% current_jalali_year %} صندوق وام خانگی</div>
   </footer>
 
   <script>
