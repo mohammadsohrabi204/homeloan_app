@@ -83,7 +83,7 @@ class LoanPlanManagerForm(forms.ModelForm):
             raise forms.ValidationError("تاریخ را به صورت ۱۴۰۵/۰۷/۰۳ وارد کنید.")
 
     class Media:
-        js = ("js/manager_amount_words.js",)
+        js = ("js/manager_amount_words.js", "js/jalali_admin_picker.js")
 
 @admin.register(LoanPlan)
 class LoanPlanAdmin(admin.ModelAdmin):
@@ -295,6 +295,9 @@ class LotteryDrawManagerForm(forms.ModelForm):
             dt = self.instance.scheduled_at
             y,m,d = gregorian_to_jalali(dt.year, dt.month, dt.day)
             self.initial["scheduled_at"] = f"{y:04d}/{m:02d}/{d:02d} {dt:%H:%M}"
+
+    class Media:
+        js = ("js/jalali_admin_picker.js",)
 
     def clean_scheduled_at(self):
         from datetime import datetime
