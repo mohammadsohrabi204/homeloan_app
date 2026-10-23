@@ -118,8 +118,20 @@
       current=[Number(year.value),Number(month.value),Number(day.value)];
       writeCurrent();
     }
-    function show() { const parsed=readDate(input); if(parsed){current=parsed;view=[parsed[0],parsed[1]];} panel.hidden=false;render(); }
-    toggle.addEventListener("click",()=>panel.hidden?show():(panel.hidden=true));
+    function show() {
+      const parsed=readDate(input);
+      if(parsed){current=parsed;view=[parsed[0],parsed[1]];}
+      panel.hidden=false;
+      panel.style.display="block";
+      render();
+    }
+    function hide() { panel.hidden=true; panel.style.display="none"; }
+    toggle.addEventListener("click",event=>{
+      event.preventDefault();
+      event.stopPropagation();
+      if(panel.hidden || panel.style.display==="none") show(); else hide();
+    });
+    panel.addEventListener("click",event=>event.stopPropagation());
     input.addEventListener("focus",show);
     input.addEventListener("input",()=>{const p=readDate(input);if(p){current=p;view=[p[0],p[1]];render();}});
     prev.addEventListener("click",()=>{view[1]--;if(view[1]<1){view[1]=12;view[0]--;}current=[view[0],view[1],Math.min(current[2],daysInMonth(view[0],view[1]))];render();});
@@ -129,7 +141,7 @@
       select.addEventListener("wheel",event=>{event.preventDefault();select.selectedIndex=Math.max(0,Math.min(select.options.length-1,select.selectedIndex+(event.deltaY>0?1:-1)));select.dispatchEvent(new Event("change"));},{passive:false});
     });
     today.addEventListener("click",()=>{current=todayJ.slice();view=[current[0],current[1]];writeCurrent();});
-    document.addEventListener("click",event=>{if(!wrapper.contains(event.target))panel.hidden=true;});
+    document.addEventListener("click",event=>{if(!wrapper.contains(event.target))hide();});
     render();
   }
   function boot(){document.querySelectorAll("input.jalali-date-input").forEach(init);}
