@@ -129,21 +129,42 @@
     let current=parsed() || initial;
     let view=[current[0],current[1]];
     const daysInMonth=(y,m)=>{if(m<=6)return 31;if(m<=11)return 30;const g=j2g(y,12,30);const back=g2j(g[0],g[1],g[2]);return back[0]===y&&back[1]===12&&back[2]===30?30:29;};
-    const sync=()=>{
-      current[0]=+yearSelect.value; current[1]=+monthSelect.value; current[2]=+daySelect.value;
-      const max=daysInMonth(current[0],current[1]); if(current[2]>max) current[2]=max;
+    function fillSelect(select, items, value) {
+      select.innerHTML="";
+      items.forEach(item=>{
+        const option=document.createElement("option");
+        option.value=String(item.value);
+        option.textContent=item.label;
+        select.appendChild(option);
+      });
+      select.value=String(value);
+    }
+    function fillWheels() {
+      const maxDay=daysInMonth(view[0],view[1]);
+      fillSelect(yearSelect,Array.from({length:41},(_,i)=>({value:view[0]-20+i,label:fa(view[0]-20+i)})),current[0]);
+      fillSelect(monthSelect,monthNames.map((name,i)=>({value:i+1,label:name})),view[1]);
+      fillSelect(daySelect,Array.from({length:maxDay},(_,i)=>({value:i+1,label:fa(i+1)})),Math.min(current[2],maxDay));
+    }
+    const writeCurrent=()=>{
+      const max=daysInMonth(current[0],current[1]);
+      current[2]=Math.max(1,Math.min(current[2],max));
       const dateText=fa(current[0])+"/"+fa(String(current[1]).padStart(2,"0"))+"/"+fa(String(current[2]).padStart(2,"0"));
       const timeMatch=en(dateInput.value.trim()).match(/\s+(\d{1,2}:\d{2})$/);
       dateInput.value=dateText+(dateInput.name==="scheduled_at" ? " "+(timeMatch?timeMatch[1]:"20:30") : "");
       view=[current[0],current[1]]; render();
+      dateInput.dispatchEvent(new Event("input",{bubbles:true}));
       dateInput.dispatchEvent(new Event("change",{bubbles:true}));
+    };
+    const sync=()=>{
+      current=[Number(yearSelect.value),Number(monthSelect.value),Number(daySelect.value)];
+      writeCurrent();
     };
     const render=()=>{
       const [y,m]=view; title.textContent=monthNames[m-1]+" "+fa(y); fillWheels();
       daysBox.innerHTML="";
       const first=j2g(y,m,1); const firstDay=(new Date(first[0],first[1]-1,first[2]).getDay()+1)%7;
       for(let i=0;i<firstDay;i++) daysBox.appendChild(document.createElement("span"));
-      for(let d=1;d<=daysInMonth(y,m);d++){const b=document.createElement("button");b.type="button";b.textContent=fa(d);if(y===current[0]&&m===current[1]&&d===current[2])b.className="selected";b.onclick=()=>{current=[y,m,d];sync();};daysBox.appendChild(b);}
+      for(let d=1;d<=daysInMonth(y,m);d++){const b=document.createElement("button");b.type="button";b.textContent=fa(d);if(y===current[0]&&m===current[1]&&d===current[2])b.className="selected";b.onclick=()=>{current=[y,m,d];writeCurrent();};daysBox.appendChild(b);}
     };
     const open=()=>{picker.hidden=false;render();};
     toggle.onclick=()=>{picker.hidden=false;render();};
@@ -154,7 +175,7 @@
     [yearSelect,monthSelect,daySelect].forEach(s=>s.addEventListener("change",sync));
     [yearSelect,monthSelect,daySelect].forEach(s=>s.addEventListener("wheel",e=>{e.preventDefault();s.selectedIndex=Math.max(0,Math.min(s.options.length-1,s.selectedIndex+(e.deltaY>0?1:-1)));s.dispatchEvent(new Event("change"));},{passive:false}));
     dateInput.addEventListener("input",()=>{const p=parsed();if(p&&p[1]>=1&&p[1]<=12){current=p;view=[p[0],p[1]];render();}});
-    picker.querySelector(".jalali-today").onclick=()=>{current=g2j(now.getFullYear(),now.getMonth()+1,now.getDate());view=[current[0],current[1]];sync();open();};
+    picker.querySelector(".jalali-today").onclick=()=>{current=g2j(now.getFullYear(),now.getMonth()+1,now.getDate());view=[current[0],current[1]];writeCurrent();open();};
     render();
   }
 
