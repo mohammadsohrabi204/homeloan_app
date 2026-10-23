@@ -101,18 +101,22 @@
         const b=document.createElement("button"); b.type="button"; b.textContent=toFa(d);
         b.style.cssText="padding:6px 0;border:1px solid #eee;border-radius:5px;background:#fff;cursor:pointer;";
         if(view[0]===current[0]&&view[1]===current[1]&&d===current[2]) b.style.cssText+="background:#dceafe;border-color:#6b9be8;font-weight:bold;";
-        b.addEventListener("click",()=>{current=[view[0],view[1],d];sync();});
+        b.addEventListener("click",()=>{current=[view[0],view[1],d];writeCurrent();});
         grid.appendChild(b);
       }
     }
-    function sync() {
-      current[0]=Number(year.value); current[1]=Number(month.value); current[2]=Math.min(Number(day.value),daysInMonth(current[0],current[1]));
+    function writeCurrent() {
+      current[2]=Math.max(1,Math.min(current[2],daysInMonth(current[0],current[1])));
       const dateText=toFa(current[0])+"/"+toFa(String(current[1]).padStart(2,"0"))+"/"+toFa(String(current[2]).padStart(2,"0"));
       const oldTime=toEn(input.value.trim()).match(/\s+(\d{1,2}:\d{2})$/);
       input.value=dateText+(input.name==="scheduled_at"?" "+(oldTime?oldTime[1]:"20:30"):"");
       view=[current[0],current[1]]; render();
       input.dispatchEvent(new Event("input",{bubbles:true}));
       input.dispatchEvent(new Event("change",{bubbles:true}));
+    }
+    function sync() {
+      current=[Number(year.value),Number(month.value),Number(day.value)];
+      writeCurrent();
     }
     function show() { const parsed=readDate(input); if(parsed){current=parsed;view=[parsed[0],parsed[1]];} panel.hidden=false;render(); }
     toggle.addEventListener("click",()=>panel.hidden?show():(panel.hidden=true));
@@ -124,7 +128,7 @@
       select.addEventListener("change",sync);
       select.addEventListener("wheel",event=>{event.preventDefault();select.selectedIndex=Math.max(0,Math.min(select.options.length-1,select.selectedIndex+(event.deltaY>0?1:-1)));select.dispatchEvent(new Event("change"));},{passive:false});
     });
-    today.addEventListener("click",()=>{current=todayJ.slice();view=[current[0],current[1]];sync();});
+    today.addEventListener("click",()=>{current=todayJ.slice();view=[current[0],current[1]];writeCurrent();});
     document.addEventListener("click",event=>{if(!wrapper.contains(event.target))panel.hidden=true;});
     render();
   }
