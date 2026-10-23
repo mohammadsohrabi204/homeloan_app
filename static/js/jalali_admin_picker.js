@@ -135,7 +135,8 @@
       if(panel.hidden || getComputedStyle(panel).display==="none") show(); else hide();
     });
     panel.addEventListener("click",event=>event.stopPropagation());
-    input.addEventListener("focus",show);
+    // Open the picker explicitly from its calendar button. Opening on input focus
+    // made a subsequent button click immediately toggle the already-open panel closed.
     input.addEventListener("input",()=>{const p=readDate(input);if(p){current=p;view=[p[0],p[1]];render();}});
     prev.addEventListener("click",()=>{view[1]--;if(view[1]<1){view[1]=12;view[0]--;}current=[view[0],view[1],Math.min(current[2],daysInMonth(view[0],view[1]))];render();});
     next.addEventListener("click",()=>{view[1]++;if(view[1]>12){view[1]=1;view[0]++;}current=[view[0],view[1],Math.min(current[2],daysInMonth(view[0],view[1]))];render();});
