@@ -70,7 +70,7 @@ def dashboard(request):
 
 def staff_required(view_func):
     return user_passes_test(
-        lambda user: user.is_authenticated and user.is_active and user.is_staff,
+        lambda user: user.is_authenticated and user.is_active and user.is_staff and getattr(user, "phone_verified", False),
         login_url="accounts:login",
     )(view_func)
 
