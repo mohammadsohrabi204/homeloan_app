@@ -59,7 +59,7 @@
     panel.dir="rtl";
     panel.setAttribute("role","dialog");
     panel.setAttribute("aria-label","انتخاب تاریخ شمسی");
-    panel.style.cssText="position:absolute;z-index:999999;top:calc(100% + 5px);right:0;width:280px;max-width:90vw;padding:10px;background:var(--body-bg,#fff);color:var(--body-fg,#222);border:1px solid var(--border-color,#bbb);border-radius:10px;box-shadow:0 8px 25px #0004;font:14px sans-serif;";
+    panel.style.cssText="position:fixed;z-index:999999;top:8px;left:8px;right:auto;width:280px;max-width:calc(100vw - 16px);max-height:calc(100vh - 16px);overflow-y:auto;box-sizing:border-box;padding:10px;background:var(--body-bg,#fff);color:var(--body-fg,#222);border:1px solid var(--border-color,#bbb);border-radius:10px;box-shadow:0 8px 25px #0004;font:14px sans-serif;";
     wrapper.appendChild(panel);
     const header=document.createElement("div");
     header.style.cssText="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;";
@@ -127,6 +127,24 @@
       panel.style.setProperty("display","block","important");
       toggle.setAttribute("aria-expanded","true");
       render();
+
+      // Keep the picker inside the visible viewport. The admin form can place
+      // date fields near/below the viewport edge, especially with DevTools open.
+      input.scrollIntoView({block:"nearest",inline:"nearest"});
+      const fieldRect=input.getBoundingClientRect();
+      const panelRect=panel.getBoundingClientRect();
+      const margin=8;
+      const viewportWidth=document.documentElement.clientWidth;
+      const viewportHeight=document.documentElement.clientHeight;
+      const below=viewportHeight-fieldRect.bottom-margin;
+      const above=fieldRect.top-margin;
+      let top;
+      if(panelRect.height<=below) top=fieldRect.bottom+5;
+      else if(panelRect.height<=above) top=fieldRect.top-panelRect.height-5;
+      else top=Math.max(margin,Math.min(fieldRect.bottom+5,viewportHeight-panelRect.height-margin));
+      const left=Math.max(margin,Math.min(fieldRect.right-panelRect.width,viewportWidth-panelRect.width-margin));
+      panel.style.left=left+"px";
+      panel.style.top=top+"px";
     }
     function hide() { panel.hidden=true; panel.style.setProperty("display","none","important"); toggle.setAttribute("aria-expanded","false"); }
     toggle.addEventListener("click",event=>{
