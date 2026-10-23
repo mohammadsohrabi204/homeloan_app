@@ -52,24 +52,26 @@
     wrapper.appendChild(input);
     const toggle=document.createElement("button");
     toggle.type="button"; toggle.textContent="📅"; toggle.title="انتخاب تاریخ شمسی";
-    toggle.style.cssText="cursor:pointer;border:1px solid #aaa;border-radius:5px;padding:5px 8px;background:#fff;";
+    toggle.style.cssText="cursor:pointer;border:1px solid var(--border-color,#aaa);border-radius:5px;padding:5px 8px;background:var(--body-bg,#fff);color:var(--body-fg,#222);";
     wrapper.appendChild(toggle);
     const panel=document.createElement("div");
     panel.hidden=true;
     panel.dir="rtl";
-    panel.style.cssText="position:absolute;z-index:99999;top:calc(100% + 5px);right:0;width:280px;max-width:90vw;padding:10px;background:#fff;color:#222;border:1px solid #bbb;border-radius:10px;box-shadow:0 8px 25px #0002;font:14px sans-serif;";
+    panel.setAttribute("role","dialog");
+    panel.setAttribute("aria-label","انتخاب تاریخ شمسی");
+    panel.style.cssText="position:absolute;z-index:999999;top:calc(100% + 5px);right:0;width:280px;max-width:90vw;padding:10px;background:var(--body-bg,#fff);color:var(--body-fg,#222);border:1px solid var(--border-color,#bbb);border-radius:10px;box-shadow:0 8px 25px #0004;font:14px sans-serif;";
     wrapper.appendChild(panel);
     const header=document.createElement("div");
     header.style.cssText="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;";
     const prev=document.createElement("button"), next=document.createElement("button"), title=document.createElement("strong");
     prev.type=next.type="button"; prev.textContent="‹"; next.textContent="›";
-    [prev,next].forEach(b=>b.style.cssText="cursor:pointer;border:1px solid #ddd;background:#f7f7f7;border-radius:5px;padding:2px 10px;font-size:18px;");
+    [prev,next].forEach(b=>b.style.cssText="cursor:pointer;border:1px solid var(--border-color,#ddd);background:var(--darkened-bg,#f7f7f7);color:var(--body-fg,#222);border-radius:5px;padding:2px 10px;font-size:18px;");
     header.append(prev,title,next); panel.appendChild(header);
     const wheels=document.createElement("div");
     wheels.style.cssText="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;margin-bottom:8px;";
     function makeSelect(label) {
       const box=document.createElement("label"); box.textContent=label+" ";
-      const select=document.createElement("select"); select.style.cssText="width:100%;padding:4px;border:1px solid #ddd;border-radius:5px;background:#fff;";
+      const select=document.createElement("select"); select.style.cssText="width:100%;padding:4px;border:1px solid var(--border-color,#ddd);border-radius:5px;background:var(--body-bg,#fff);color:var(--body-fg,#222);";
       box.appendChild(select); wheels.appendChild(box); return select;
     }
     const day=makeSelect("روز"), month=makeSelect("ماه"), year=makeSelect("سال");
@@ -99,7 +101,7 @@
       for(let i=0;i<offset;i++) grid.appendChild(document.createElement("span"));
       for(let d=1;d<=daysInMonth(view[0],view[1]);d++) {
         const b=document.createElement("button"); b.type="button"; b.textContent=toFa(d);
-        b.style.cssText="padding:6px 0;border:1px solid #eee;border-radius:5px;background:#fff;cursor:pointer;";
+        b.style.cssText="padding:6px 0;border:1px solid var(--border-color,#eee);border-radius:5px;background:var(--body-bg,#fff);color:var(--body-fg,#222);cursor:pointer;";
         if(view[0]===current[0]&&view[1]===current[1]&&d===current[2]) b.style.cssText+="background:#dceafe;border-color:#6b9be8;font-weight:bold;";
         b.addEventListener("click",()=>{current=[view[0],view[1],d];writeCurrent();});
         grid.appendChild(b);
@@ -122,14 +124,15 @@
       const parsed=readDate(input);
       if(parsed){current=parsed;view=[parsed[0],parsed[1]];}
       panel.hidden=false;
-      panel.style.display="block";
+      panel.style.setProperty("display","block","important");
+      toggle.setAttribute("aria-expanded","true");
       render();
     }
-    function hide() { panel.hidden=true; panel.style.display="none"; }
+    function hide() { panel.hidden=true; panel.style.setProperty("display","none","important"); toggle.setAttribute("aria-expanded","false"); }
     toggle.addEventListener("click",event=>{
       event.preventDefault();
       event.stopPropagation();
-      if(panel.hidden || panel.style.display==="none") show(); else hide();
+      if(panel.hidden || getComputedStyle(panel).display==="none") show(); else hide();
     });
     panel.addEventListener("click",event=>event.stopPropagation());
     input.addEventListener("focus",show);
