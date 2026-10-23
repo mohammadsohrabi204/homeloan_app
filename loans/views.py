@@ -203,10 +203,16 @@ def manager_dashboard(request):
     for payment in payments:
         is_overdue = payment.status != PaymentStatus.PAID and payment.due_date and payment.due_date < timezone.localdate()
         has_receipt = bool(payment.manual_receipt)
-        is_new_receipt = has_receipt and payment.status != PaymentStatus.PAID
+        is_new_receipt = has_receipt and payment.status not in (PaymentStatus.PAID, PaymentStatus.RECEIPT_REJECTED)
         if status_filter == "overdue" and not is_overdue:
             continue
         if status_filter == "receipts" and not is_new_receipt:
+            continue
+        if status_filter == "paid" and payment.status != PaymentStatus.PAID:
+            continue
+        if status_filter == "rejected" and payment.status != PaymentStatus.RECEIPT_REJECTED:
+            continue
+        if status_filter == "unpaid" and (payment.status != PaymentStatus.PENDING or has_receipt):
             continue
         payment_rows.append({
             "payment": payment,
@@ -217,7 +223,7 @@ def manager_dashboard(request):
 
     total_members = Reservation.objects.filter(status=ReservationStatus.CONFIRMED).values("user_id").distinct().count()
     total_paid = Payment.objects.filter(status=PaymentStatus.PAID).count()
-    pending_receipts = Payment.objects.exclude(manual_receipt="").exclude(status=PaymentStatus.PAID).count()
+    pending_receipts = Payment.objects.exclude(manual_receipt="").filter(status=PaymentStatus.PENDING).count()
     overdue_count = Payment.objects.filter(due_date__lt=timezone.localdate()).exclude(status=PaymentStatus.PAID).count()
 
     return render(
