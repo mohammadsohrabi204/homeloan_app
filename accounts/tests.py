@@ -84,6 +84,22 @@ class LoginTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertIn("/accounts/login/", response.url)
 
+    def test_unverified_authenticated_user_is_logged_out_before_dashboard(self):
+        self.user.phone_verified = False
+        self.user.save(update_fields=["phone_verified"])
+        self.client.force_login(self.user)
+
+        response = self.client.get("/")
+
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("/accounts/login/", response.url)
+        self.assertFalse(response.wsgi_request.user.is_authenticated)
+
+    def test_non_staff_user_cannot_access_manager_panel(self):
+        response = self.client.get("/manager/")
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("/accounts/login/", response.url)
+
     def test_logout_requires_post(self):
         self.client.force_login(self.user)
         self.assertEqual(self.client.get("/accounts/logout/").status_code, 405)
