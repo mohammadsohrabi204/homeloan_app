@@ -166,11 +166,13 @@
       for(let i=0;i<firstDay;i++) daysBox.appendChild(document.createElement("span"));
       for(let d=1;d<=daysInMonth(y,m);d++){const b=document.createElement("button");b.type="button";b.textContent=fa(d);if(y===current[0]&&m===current[1]&&d===current[2])b.className="selected";b.onclick=()=>{current=[y,m,d];writeCurrent();};daysBox.appendChild(b);}
     };
-    const open=()=>{picker.hidden=false;render();};
-    toggle.onclick=()=>{picker.hidden=false;render();};
+    const open=()=>{picker.hidden=false;picker.style.display="block";render();};
+    const close=()=>{picker.hidden=true;picker.style.display="none";};
+    toggle.addEventListener("click",e=>{e.preventDefault();e.stopPropagation();if(picker.hidden||picker.style.display==="none")open();else close();});
     dateInput.addEventListener("focus", open);
-    dateInput.addEventListener("click", open);
-    document.addEventListener("click",e=>{if(!pickerWrap.contains(e.target))picker.hidden=true;});
+    dateInput.addEventListener("click",e=>{e.stopPropagation();open();});
+    picker.addEventListener("click",e=>e.stopPropagation());
+    document.addEventListener("click",e=>{if(!pickerWrap.contains(e.target))close();});
     picker.querySelectorAll(".jalali-nav").forEach(b=>b.onclick=()=>{let m=view[1]+(+b.dataset.dir),y=view[0];if(m<1){m=12;y--;}if(m>12){m=1;y++;}view=[y,m];current=[y,m,Math.min(current[2],daysInMonth(y,m))];render();});
     [yearSelect,monthSelect,daySelect].forEach(s=>s.addEventListener("change",sync));
     [yearSelect,monthSelect,daySelect].forEach(s=>s.addEventListener("wheel",e=>{e.preventDefault();s.selectedIndex=Math.max(0,Math.min(s.options.length-1,s.selectedIndex+(e.deltaY>0?1:-1)));s.dispatchEvent(new Event("change"));},{passive:false}));
