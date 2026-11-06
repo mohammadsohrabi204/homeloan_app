@@ -6,6 +6,7 @@
 <div class="plan-header">
   <h1>{{ plan.title }}</h1>
   {% if plan.description %}<p class="muted">{{ plan.description }}</p>{% endif %}
+  {% if plan.creator_first_winner %}<p class="badge badge-brass">قانون این طرح: اگر سازنده عضو شود و قسط دورهٔ اول را بپردازد، برندهٔ دورهٔ اول خواهد بود.</p>{% endif %}
   <div class="plan-stats">
     <div class="plan-stat"><span class="value">{{ plan.total_amount|intcomma }} تومان<br><span class="small muted">{{ plan.total_amount_words }}</span></span><span class="label">مبلغ وام (تومان)</span></div>
     <div class="plan-stat"><span class="value">{{ plan.monthly_payment|intcomma }} تومان<br><span class="small muted">{{ plan.monthly_payment_words }}</span></span><span class="label">قسط ماهانه (تومان)</span></div>

@@ -110,7 +110,7 @@ class LoanPlanAdmin(admin.ModelAdmin):
     actions = ["action_start_plan"]
     fields = (
         "title", "description", "total_amount", "monthly_payment", "service_fee", "start_date",
-        "duration_months", "capacity", "payment_destination", "online_payment_enabled", "status",
+        "duration_months", "capacity", "payment_destination", "creator_first_winner", "online_payment_enabled", "status",
         "created_by", "jalali_created_at",
     )
 
@@ -125,13 +125,14 @@ class LoanPlanAdmin(admin.ModelAdmin):
             )
 
     def get_readonly_fields(self, request, obj=None):
+        locked = ("creator_first_winner",) if obj and obj.confirmed_count else ()
         if obj and obj.status in (PlanStatus.IN_PROGRESS, PlanStatus.COMPLETED, PlanStatus.CANCELLED):
             # پس از شروع، تغییر مبلغ/مدت/ظرفیت جدول اقساط و سوابق مالی را ناسازگار می‌کند.
-            return tuple(self.readonly_fields) + (
+            return tuple(self.readonly_fields) + locked + (
                 "title", "description", "total_amount", "monthly_payment", "service_fee",
                 "duration_months", "capacity", "status", "start_date",
             )
-        return self.readonly_fields
+        return tuple(self.readonly_fields) + locked
 
     form = LoanPlanManagerForm
 

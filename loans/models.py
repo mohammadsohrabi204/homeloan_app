@@ -129,6 +129,11 @@ class LoanPlan(models.Model):
         PaymentDestination, on_delete=models.PROTECT, null=True, blank=True,
         related_name="loan_plans", verbose_name="حساب دریافت اقساط",
     )
+    creator_first_winner = models.BooleanField(
+        "اولویت سازنده برای دریافت وام در دورهٔ اول",
+        default=False,
+        help_text="این قانون در صفحهٔ طرح به همه نمایش داده می‌شود؛ پس از اولین رزرو قابل تغییر نیست.",
+    )
     online_payment_enabled = models.BooleanField(
         "فعال‌بودن پرداخت آنلاین برای این طرح",
         default=False,

@@ -121,9 +121,9 @@ def run_lottery_draw(draw, actor):
     ).exists():
         raise ValueError("ابتدا باید قرعه‌کشی دوره‌های پیشین برگزار یا لغو شوند.")
 
-    reservations = Reservation.objects.select_for_update().filter(
+    reservations = list(Reservation.objects.select_for_update().filter(
         loan_plan=plan, status=ReservationStatus.CONFIRMED
-    ).select_related("user")
+    ).select_related("user"))
     round_payments = {
         payment.reservation_id: payment
         for payment in Payment.objects.select_for_update().filter(
@@ -141,10 +141,24 @@ def run_lottery_draw(draw, actor):
     if not eligible:
         raise ValueError("هیچ عضو واجدشرایطی (با قسط پرداخت‌شدهٔ همین دوره) برای قرعه‌کشی یافت نشد.")
 
-    # secrets.SystemRandom از CSPRNG سیستم‌عامل استفاده می‌کند — بر خلاف ماژول random
-    # که برای مقاصد امنیتی/قرعه‌کشی مناسب نیست.
-    rng = secrets.SystemRandom()
-    winner = rng.choice(eligible)
+    priority_applied = False
+    winner = None
+    if plan.creator_first_winner and draw.round_number == 1:
+        creator_reservation = next(
+            (r for r in reservations if r.user_id == plan.created_by_id), None
+        )
+        if creator_reservation:
+            creator_payment = round_payments.get(creator_reservation.id)
+            if not creator_payment or creator_payment.status != PaymentStatus.PAID:
+                raise ValueError(
+                    "طبق قانون اعلام‌شدهٔ طرح، سازنده عضو شده است؛ برای اجرای قرعه‌کشی دورهٔ اول باید قسط اول سازنده پرداخت شود."
+                )
+            winner = creator_reservation
+            priority_applied = True
+
+    # secrets.SystemRandom از CSPRNG سیستم‌عامل استفاده می‌کند.
+    if winner is None:
+        winner = secrets.SystemRandom().choice(eligible)
 
     eligible_ids = sorted(r.id for r in eligible)
     snapshot = json.dumps(eligible_ids)
@@ -180,6 +194,7 @@ def run_lottery_draw(draw, actor):
             "winner_user": str(winner.user),
             "eligible_count": len(eligible),
             "integrity_hash": fingerprint,
+            "selection_rule": "creator_first_winner" if priority_applied else "random",
         },
     )
 

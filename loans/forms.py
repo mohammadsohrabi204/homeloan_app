@@ -39,6 +39,7 @@ class ManagerLoanPlanForm(forms.ModelForm):
             "duration_months",
             "capacity",
             "payment_destination",
+            "creator_first_winner",
             "online_payment_enabled",
             "status",
             "start_date",
@@ -61,6 +62,10 @@ class ManagerLoanPlanForm(forms.ModelForm):
             gd = self.instance.start_date.day
             jy, jm, jd = gregorian_to_jalali(gy, gm, gd)
             self.initial["start_date"] = f"{jy:04d}/{jm:02d}/{jd:02d}"
+
+        if self.instance and self.instance.pk and self.instance.confirmed_count:
+            self.fields["creator_first_winner"].disabled = True
+            self.fields["creator_first_winner"].help_text = "پس از اولین رزرو، قانون قرعه‌کشی برای شفافیت اعضا قفل می‌شود."
 
     def clean_start_date(self):
         raw = str(self.cleaned_data.get("start_date", "")).strip()
