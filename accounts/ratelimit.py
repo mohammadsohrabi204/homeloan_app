@@ -16,19 +16,13 @@ def is_rate_limited(key: str, limit: int, window_seconds: int) -> bool:
     از `limit` بیشتر شده باشد True برمی‌گرداند (یعنی درخواست باید مسدود شود).
     """
     cache_key = f"ratelimit:{key}"
-    current = cache.get(cache_key)
-
-    if current is None:
-        cache.set(cache_key, 1, timeout=window_seconds)
-        return False
-
-    if current >= limit:
-        return True
-
+    # add() establishes the window once, while incr() is atomic on Redis and
+    # Django's local-memory backend. This avoids lost increments under load.
+    cache.add(cache_key, 0, timeout=window_seconds)
     try:
-        cache.incr(cache_key)
+        current = cache.incr(cache_key)
     except ValueError:
-        # کلید بین get و incr منقضی شده — دوباره از صفر شروع می‌کنیم
-        cache.set(cache_key, 1, timeout=window_seconds)
-
-    return False
+        # Key expired between add and incr; start a fresh window.
+        cache.add(cache_key, 0, timeout=window_seconds)
+        current = cache.incr(cache_key)
+    return current > limit

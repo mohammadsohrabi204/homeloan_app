@@ -32,9 +32,10 @@ def _send_phone_otp(request, user):
     user.phone_otp_hash = make_password(code)
     user.phone_otp_expires_at = timezone.now() + timezone.timedelta(minutes=settings.PHONE_OTP_TTL_MINUTES)
     user.save(update_fields=["phone_otp_hash", "phone_otp_expires_at"])
+    # Keep the account reachable even when the SMS provider is temporarily down.
+    request.session["pending_phone_verification_user_id"] = user.id
     if not send_phone_otp(user.phone_number, code):
         return False
-    request.session["pending_phone_verification_user_id"] = user.id
     return True
 
 

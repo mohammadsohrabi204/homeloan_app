@@ -2,6 +2,7 @@ from django.contrib import admin
 from django.utils.html import format_html
 from django.utils import timezone
 from django import forms
+from django.conf import settings
 
 from .models import AuditLog, FundSettings, LoanPlan, LotteryDraw, LotteryStatus, Notification, Payment, PaymentDestination, PaymentStatus, PlanStatus, Reservation
 from .jalali import format_jalali
@@ -82,6 +83,14 @@ class LoanPlanManagerForm(forms.ModelForm):
         except (ValueError, TypeError, OverflowError):
             raise forms.ValidationError("تاریخ را به صورت ۱۴۰۵/۰۷/۰۳ وارد کنید.")
 
+    def clean_online_payment_enabled(self):
+        enabled = self.cleaned_data.get("online_payment_enabled")
+        if enabled and settings.PAYMENT_GATEWAY not in ("zarinpal", "both"):
+            raise forms.ValidationError("ابتدا PAYMENT_GATEWAY را روی zarinpal یا both تنظیم کنید.")
+        if enabled and not settings.ZARINPAL_MERCHANT_ID:
+            raise forms.ValidationError("برای فعال‌کردن پرداخت آنلاین، ZARINPAL_MERCHANT_ID را تنظیم کنید.")
+        return enabled
+
     class Media:
         js = ("js/manager_amount_words.js", "js/jalali_admin_picker.js")
 
@@ -101,7 +110,8 @@ class LoanPlanAdmin(admin.ModelAdmin):
     actions = ["action_start_plan"]
     fields = (
         "title", "description", "total_amount", "monthly_payment", "service_fee", "start_date",
-        "duration_months", "capacity", "payment_destination", "status", "created_by", "jalali_created_at",
+        "duration_months", "capacity", "payment_destination", "online_payment_enabled", "status",
+        "created_by", "jalali_created_at",
     )
 
     def save_model(self, request, obj, form, change):
@@ -400,6 +410,7 @@ class FundSettingsAdmin(admin.ModelAdmin):
     fieldsets = (
         ("اطلاعات عمومی", {"fields": ("fund_name", "support_phone", "support_text", "is_active")}),
         ("متن‌های قابل نمایش به کاربران", {"fields": ("payment_instructions", "terms_text")}),
+        ("پرداخت", {"fields": ("online_payments_enabled",)}),
         ("سیستم", {"fields": ("jalali_updated_at",)}),
     )
     readonly_fields = ("jalali_updated_at",)

@@ -74,6 +74,11 @@ class FundSettings(models.Model):
         blank=True,
         help_text="قوانین عمومی عضویت و پرداخت صندوق.",
     )
+    online_payments_enabled = models.BooleanField(
+        "اجازهٔ کلی پرداخت آنلاین",
+        default=False,
+        help_text="کلید قطع سراسری؛ پرداخت آنلاین هر طرح فقط در صورت فعال‌بودن این گزینه نیز ممکن است.",
+    )
     is_active = models.BooleanField("فعال", default=True)
     updated_at = models.DateTimeField("آخرین بروزرسانی", auto_now=True)
 
@@ -123,6 +128,11 @@ class LoanPlan(models.Model):
     payment_destination = models.ForeignKey(
         PaymentDestination, on_delete=models.PROTECT, null=True, blank=True,
         related_name="loan_plans", verbose_name="حساب دریافت اقساط",
+    )
+    online_payment_enabled = models.BooleanField(
+        "فعال‌بودن پرداخت آنلاین برای این طرح",
+        default=False,
+        help_text="برای نمایش درگاه آنلاین در این طرح. کلید کلی پرداخت آنلاین صندوق نیز باید روشن باشد.",
     )
 
     created_by = models.ForeignKey(
@@ -245,7 +255,7 @@ class LotteryDraw(models.Model):
         Reservation, on_delete=models.SET_NULL, null=True, blank=True, related_name="+", verbose_name="رزروِ برنده"
     )
     eligible_snapshot = models.TextField(blank=True, help_text="فهرست رزروهای واجدشرایط در لحظهٔ قرعه‌کشی (برای رسیدگی به اعتراض)")
-    integrity_hash = models.CharField(max_length=64, blank=True, help_text="اثر انگشت SHA-256 برای اثبات عدم دستکاری بعدی")
+    integrity_hash = models.CharField(max_length=80, blank=True, help_text="امضای HMAC برای بررسی دستکاری فیلدهای قرعه‌کشی")
 
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="created_draws")
 

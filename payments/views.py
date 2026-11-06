@@ -11,7 +11,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from loans.models import Payment, PaymentStatus
-from loans.services import log_action
+from loans.services import is_online_payment_enabled, log_action
 
 from .gateways import PaymentError, get_gateway
 from .forms import ManualReceiptForm
@@ -33,8 +33,12 @@ def pay(request, payment_id):
     if configured_gateway == "both":
         if selected_method not in ("manual", "zarinpal"):
             raise PermissionDenied
+        if selected_method == "zarinpal" and not is_online_payment_enabled(payment.reservation.loan_plan):
+            raise PermissionDenied
         gateway = get_gateway(selected_method)
     elif configured_gateway == "zarinpal":
+        if not is_online_payment_enabled(payment.reservation.loan_plan):
+            raise PermissionDenied
         gateway = get_gateway("zarinpal")
     else:
         gateway = get_gateway("manual")

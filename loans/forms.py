@@ -1,4 +1,5 @@
 from django import forms
+from django.conf import settings
 from django.contrib.auth import get_user_model
 
 from .jalali import gregorian_to_jalali, jalali_to_gregorian
@@ -38,6 +39,7 @@ class ManagerLoanPlanForm(forms.ModelForm):
             "duration_months",
             "capacity",
             "payment_destination",
+            "online_payment_enabled",
             "status",
             "start_date",
         )
@@ -100,6 +102,14 @@ class ManagerLoanPlanForm(forms.ModelForm):
             raise forms.ValidationError(
                 "تاریخ را به صورت ۱۴۰۵/۰۷/۰۳ وارد کنید."
             )
+
+    def clean_online_payment_enabled(self):
+        enabled = self.cleaned_data.get("online_payment_enabled")
+        if enabled and settings.PAYMENT_GATEWAY not in ("zarinpal", "both"):
+            raise forms.ValidationError("ابتدا PAYMENT_GATEWAY را روی zarinpal یا both تنظیم کنید.")
+        if enabled and not settings.ZARINPAL_MERCHANT_ID:
+            raise forms.ValidationError("برای فعال‌کردن پرداخت آنلاین، ZARINPAL_MERCHANT_ID را تنظیم کنید.")
+        return enabled
 
 
 class PaymentDestinationForm(forms.ModelForm):
@@ -225,6 +235,7 @@ class FundSettingsForm(forms.ModelForm):
             "support_text",
             "payment_instructions",
             "terms_text",
+            "online_payments_enabled",
             "is_active",
         )
         widgets = {
@@ -232,6 +243,14 @@ class FundSettingsForm(forms.ModelForm):
             "payment_instructions": forms.Textarea(attrs={"rows": 5}),
             "terms_text": forms.Textarea(attrs={"rows": 6}),
         }
+
+    def clean_online_payments_enabled(self):
+        enabled = self.cleaned_data.get("online_payments_enabled")
+        if enabled and settings.PAYMENT_GATEWAY not in ("zarinpal", "both"):
+            raise forms.ValidationError("ابتدا PAYMENT_GATEWAY را روی zarinpal یا both تنظیم کنید.")
+        if enabled and not settings.ZARINPAL_MERCHANT_ID:
+            raise forms.ValidationError("برای فعال‌کردن پرداخت آنلاین، ZARINPAL_MERCHANT_ID را تنظیم کنید.")
+        return enabled
 
 
 User = get_user_model()

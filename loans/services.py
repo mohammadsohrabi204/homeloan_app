@@ -3,14 +3,43 @@
 و هم بتوان همان منطق را هم از پنل مدیریت و هم از views فراخوانی کرد.
 """
 import hashlib
+import hmac
 import json
 import secrets
 
 from dateutil.relativedelta import relativedelta
+from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
 
-from .models import AuditLog, LotteryStatus, Notification, PaymentStatus, ReservationStatus
+from .models import AuditLog, FundSettings, LotteryStatus, Notification, PaymentStatus, ReservationStatus
+
+
+def is_online_payment_enabled(plan):
+    return (
+        settings.PAYMENT_GATEWAY in ("zarinpal", "both")
+        and bool(settings.ZARINPAL_MERCHANT_ID)
+        and FundSettings.objects.filter(online_payments_enabled=True).exists()
+        and bool(plan and plan.online_payment_enabled)
+    )
+
+
+def lottery_integrity_signature(plan_id, round_number, eligible_snapshot, winner_id, executed_at):
+    """Keyed signature: database-only edits cannot produce a valid replacement hash."""
+    payload = f"{plan_id}:{round_number}:{eligible_snapshot}:{winner_id}:{executed_at.isoformat()}"
+    digest = hmac.new(settings.LOTTERY_SIGNING_KEY.encode("utf-8"), payload.encode("utf-8"), hashlib.sha256).hexdigest()
+    return f"hmac-sha256:{digest}"
+
+
+def verify_lottery_integrity(draw):
+    """Return whether the stored draw fields match the app-secret signature."""
+    if not draw.integrity_hash.startswith("hmac-sha256:") or not draw.executed_at or not draw.winner_reservation_id:
+        return False
+    expected = lottery_integrity_signature(
+        draw.loan_plan_id, draw.round_number, draw.eligible_snapshot,
+        draw.winner_reservation_id, draw.executed_at,
+    )
+    return hmac.compare_digest(draw.integrity_hash, expected)
 
 
 def log_action(actor, action, details=None, ip_address=None):
@@ -120,15 +149,14 @@ def run_lottery_draw(draw, actor):
     eligible_ids = sorted(r.id for r in eligible)
     snapshot = json.dumps(eligible_ids)
     now = timezone.now()
-    fingerprint = hashlib.sha256(
-        f"{draw.loan_plan_id}:{draw.round_number}:{snapshot}:{winner.id}:{now.isoformat()}".encode("utf-8")
-    ).hexdigest()
-
     draw.eligible_snapshot = snapshot
     draw.winner_reservation = winner
     draw.status = LotteryStatus.COMPLETED
     draw.executed_at = now
-    draw.integrity_hash = fingerprint
+    draw.integrity_hash = lottery_integrity_signature(
+        draw.loan_plan_id, draw.round_number, snapshot, winner.id, now
+    )
+    fingerprint = draw.integrity_hash
     draw.save()
 
     winner.has_won = True

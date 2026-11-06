@@ -11,7 +11,7 @@ from django.utils import timezone
 
 from .models import LoanPlan, Notification, Payment, PaymentStatus, PlanStatus, Reservation, ReservationStatus
 from .jalali import amount_in_words, format_jalali
-from .services import log_action, notify_upcoming_and_overdue_payments, run_lottery_draw, start_loan_plan
+from .services import is_online_payment_enabled, log_action, notify_upcoming_and_overdue_payments, run_lottery_draw, start_loan_plan
 from .forms import ManagerLoanPlanForm, PaymentDestinationForm, ManagerLotteryDrawForm, FundSettingsForm, ManagerUserForm
 from .models import FundSettings, LotteryDraw, PaymentDestination
 
@@ -114,6 +114,29 @@ def manager_plan_start(request, plan_id):
         messages.error(request, str(exc))
     return redirect("loans:manager_dashboard")
 
+
+@staff_required
+@require_POST
+def manager_plan_cancel(request, plan_id):
+    with transaction.atomic():
+        plan = get_object_or_404(LoanPlan.objects.select_for_update(), pk=plan_id)
+        if plan.status not in (PlanStatus.DRAFT, PlanStatus.OPEN, PlanStatus.FULL):
+            messages.error(request, "فقط طرح‌های شروع‌نشده را می‌توان لغو کرد.")
+            return redirect("loans:manager_dashboard")
+
+        plan.status = PlanStatus.CANCELLED
+        plan.save(update_fields=["status"])
+        cancelled_reservations = Reservation.objects.filter(
+            loan_plan=plan, status=ReservationStatus.CONFIRMED
+        ).update(status=ReservationStatus.CANCELLED)
+        log_action(
+            request.user, "loan_plan_cancelled",
+            {"plan_id": plan.id, "cancelled_reservations": cancelled_reservations},
+            request.META.get("REMOTE_ADDR"),
+        )
+    messages.success(request, "طرح وام لغو شد؛ سابقهٔ طرح حفظ شده است.")
+    return redirect("loans:manager_dashboard")
+
 @staff_required
 def manager_destination_list(request):
     destinations = PaymentDestination.objects.order_by("-is_active", "title")
@@ -173,6 +196,32 @@ def manager_users(request):
     if q:
         users = users.filter(Q(full_name__icontains=q) | Q(phone_number__icontains=q) | Q(national_id__icontains=q))
     return render(request, "loans/manager_users.html", {"users": users[:200], "q": q})
+
+
+@staff_required
+@require_POST
+def manager_user_set_active(request, user_id):
+    User = get_user_model()
+    user = get_object_or_404(User, pk=user_id)
+    action = request.POST.get("action")
+    if user.is_staff or user.is_superuser or user.pk == request.user.pk:
+        messages.error(request, "وضعیت مدیران و حساب خودتان از این صفحه قابل تغییر نیست.")
+        return redirect("loans:manager_users")
+    if action not in ("activate", "deactivate"):
+        messages.error(request, "عملیات نامعتبر است.")
+        return redirect("loans:manager_users")
+
+    is_active = action == "activate"
+    if user.is_active != is_active:
+        user.is_active = is_active
+        user.save(update_fields=["is_active"])
+        log_action(
+            request.user, "user_activated" if is_active else "user_deactivated",
+            {"user_id": user.id, "phone_number": user.phone_number},
+            request.META.get("REMOTE_ADDR"),
+        )
+    messages.success(request, "کاربر فعال شد." if is_active else "کاربر غیرفعال شد.")
+    return redirect("loans:manager_users")
 @staff_required
 def manager_dashboard(request):
     now = timezone.now()
@@ -360,7 +409,7 @@ def plan_detail(request, plan_id):
             "my_payments": my_payments,
             "draws": draws,
             "manual_gateway": settings.PAYMENT_GATEWAY in ("manual", "both"),
-            "online_gateway": settings.PAYMENT_GATEWAY in ("zarinpal", "both"),
+            "online_gateway": is_online_payment_enabled(plan),
         },
     )
 

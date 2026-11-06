@@ -31,6 +31,7 @@ if not SECRET_KEY:
         "متغیر محیطی SECRET_KEY تنظیم نشده است. یک مقدار تصادفی و طولانی در فایل .env قرار دهید:\n"
         "python -c \"import secrets; print(secrets.token_hex(32))\""
     )
+LOTTERY_SIGNING_KEY = os.environ.get("LOTTERY_SIGNING_KEY", SECRET_KEY)
 
 DEBUG = env_bool("DJANGO_DEBUG", False)
 
@@ -184,14 +185,13 @@ PHONE_OTP_TTL_MINUTES = int(os.environ.get("PHONE_OTP_TTL_MINUTES", "5"))
 
 
 # --- محدودسازی نرخ درخواست (ضدِ Brute-force) --------------------------------
-CACHES = {
-    "default": {
-        # Rate-limit باید بین تمام workerهای Gunicorn مشترک باشد؛ LocMemCache
-        # در محیط چندپردازشی برای این کار قابل اتکا نیست.
-        "BACKEND": "django.core.cache.backends.redis.RedisCache",
-        "LOCATION": os.environ.get("DJANGO_CACHE_URL", "redis://redis:6379/1"),
-    }
-}
+DJANGO_CACHE_URL = os.environ.get("DJANGO_CACHE_URL")
+if DJANGO_CACHE_URL:
+    CACHES = {"default": {"BACKEND": "django.core.cache.backends.redis.RedisCache", "LOCATION": DJANGO_CACHE_URL}}
+else:
+    # Standalone development works without a Redis service. Docker sets the
+    # shared Redis URL explicitly for its multi-worker deployment.
+    CACHES = {"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache", "LOCATION": "homeloan-default"}}
 
 LOGGING = {
     "version": 1,
